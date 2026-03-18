@@ -25,6 +25,14 @@ const app = {
                 }
             });
         });
+
+        // Brain Submit Button
+        const brainSubmitBtn = document.getElementById('btn-brain-submit');
+        if (brainSubmitBtn) {
+            brainSubmitBtn.addEventListener('click', () => {
+                app.submitBrainCommand();
+            });
+        }
     },
 
     navigate(viewId) {
@@ -294,6 +302,62 @@ const app = {
         
         // Trigger the native mailto protocol link
         window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    },
+
+    async submitBrainCommand() {
+        const transcriptEl = document.getElementById('brain-transcript');
+        const loadingEl = document.getElementById('brain-loading');
+        const submitBtn = document.getElementById('btn-brain-submit');
+        const brainRecordBtn = document.getElementById('btn-brain-record');
+        
+        const command = transcriptEl.value.trim();
+        if(!command) {
+            alert("Please type or speak a command first.");
+            return;
+        }
+
+        // Prevent spam clicking while loading
+        if (submitBtn) submitBtn.disabled = true;
+        if (brainRecordBtn) brainRecordBtn.disabled = true;
+        if (loadingEl) loadingEl.classList.remove('hidden');
+
+        try {
+            // Stop voice recording if it was left on
+            if (window.voiceModule && window.voiceModule.isRecording) {
+                window.voiceModule.stopRecording();
+            }
+
+            // Get live active claims to pass as context
+            const claims = await db.getAllClaims(auth.currentUser.id);
+            const activeClaims = claims.filter(c => c.status !== 'Closed');
+
+            // Send to Grok!
+            const response = await aiBrain.processCommand(command, activeClaims);
+            
+            // Execute Brain's ruling
+            if (response && response.action === 'create_task') {
+                if(response.task_description) {
+                   await db.addTask(auth.currentUser.id, response.task_description, response.claim_id || null);
+                   transcriptEl.value = ''; // wipe on success
+                   alert("Brain: " + (response.message || "Task created!"));
+                   this.loadData();
+                   // Jump to tasks tab to show user
+                   this.navigate('tasks');
+                } else {
+                   alert("Brain: Sorry, I could not determine what the task description was.");
+                }
+            } else {
+                alert("Brain: " + (response.message || "I didn't quite catch the intent there."));
+            }
+            
+        } catch(e) {
+            console.error(e);
+            alert("Error communicating with AI Brain. Make sure you have a working network connection.");
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+            if (brainRecordBtn) brainRecordBtn.disabled = false;
+            if (loadingEl) loadingEl.classList.add('hidden');
+        }
     },
 
     escapeHTML(str) {

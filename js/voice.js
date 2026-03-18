@@ -60,6 +60,15 @@ const voiceModule = {
                 this.toggleRecording();
             });
         }
+
+        // Brain record btn
+        const brainRecordBtn = document.getElementById('btn-brain-record');
+        if (brainRecordBtn) {
+            brainRecordBtn.addEventListener('click', () => {
+                this.targetElementId = 'brain-transcript';
+                this.toggleRecording();
+            });
+        }
         
         // Modal task voice button
         document.querySelectorAll('.voice-btn').forEach(btn => {
@@ -114,6 +123,18 @@ const voiceModule = {
                 if(postActions && this.finalTranscript.trim().length > 0) {
                     postActions.classList.remove('hidden');
                 }
+            }
+        }
+        
+        // Also update Brain UI if that's the active button
+        const brainBtn = document.getElementById('btn-brain-record');
+        if (brainBtn && this.targetElementId === 'brain-transcript') {
+            if (isRecording) {
+                brainBtn.innerHTML = '<span class="material-symbols-outlined">stop</span> Stop Listening';
+                brainBtn.classList.replace('btn-primary', 'btn-danger');
+            } else {
+                brainBtn.innerHTML = '<span class="material-symbols-outlined">mic</span> Start Listening';
+                brainBtn.classList.replace('btn-danger', 'btn-primary');
             }
         }
     },
