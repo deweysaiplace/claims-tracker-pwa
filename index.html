@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Claims Tracker PWA</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons (Material Symbols) -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- App Shell -->
+    <div id="app" class="app-container">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="view active">
+            <div class="auth-container">
+                <div class="auth-logo">
+                    <span class="material-symbols-outlined logo-icon">shield_person</span>
+                    <h1>Claims Tracker</h1>
+                </div>
+                <p class="auth-subtitle">Secure access only</p>
+                <form id="login-form">
+                    <div class="input-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" required placeholder="adjuster@statefarm.com">
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required placeholder="Enter your password">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Log In</button>
+                    <div id="auth-error" class="error-message hidden"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main App Content (Hidden until auth) -->
+        <div id="main-app" class="hidden">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-title">
+                    <span id="current-view-title">Home</span>
+                </div>
+                <div class="header-actions">
+                    <button id="btn-logout" class="icon-btn" aria-label="Logout">
+                        <span class="material-symbols-outlined">logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Views -->
+            <main class="app-main">
+                <!-- Home View -->
+                <section id="view-home" class="view active-view">
+                    <div class="quick-actions">
+                        <button class="action-card" onclick="app.navigate('voice-note')">
+                            <div class="action-icon record-icon">
+                                <span class="material-symbols-outlined">mic</span>
+                            </div>
+                            <h3>Record Voicemail</h3>
+                            <p>Transcribe & Task</p>
+                        </button>
+                        
+                        <button class="action-card" onclick="app.navigate('dictate-summary')">
+                            <div class="action-icon dictation-icon">
+                                <span class="material-symbols-outlined">assignment</span>
+                            </div>
+                            <h3>Inspection Summary</h3>
+                            <p>Dictate & Email</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.openNewTaskModal()">
+                            <div class="action-icon task-icon">
+                                <span class="material-symbols-outlined">add_task</span>
+                            </div>
+                            <h3>Quick Task</h3>
+                            <p>Text or Voice</p>
+                        </button>
+                    </div>
+
+                    <div class="dashboard-widgets">
+                        <div class="widget">
+                            <div class="widget-header">
+                                <h3>Active Claims</h3>
+                                <button class="text-btn" onclick="app.navigate('claims')">View All</button>
+                            </div>
+                            <ul id="active-claims-list" class="simple-list">
+                                <li class="empty-state">Loading...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tasks View -->
+                <section id="view-tasks" class="view">
+                    <div class="view-content">
+                        <h2>My Tasks</h2>
+                        <ul id="tasks-list" class="task-list">
+                            <!-- Tasks injected here -->
+                        </ul>
+                    </div>
+                    <!-- FAB for adding task -->
+                    <button class="fab" onclick="app.openNewTaskModal()">
+                        <span class="material-symbols-outlined">add</span>
+                    </button>
+                </section>
+
+                <!-- Claims View -->
+                <section id="view-claims" class="view">
+                    <div class="view-content">
+                        <h2>Claims</h2>
+                        <ul id="claims-list" class="claim-list">
+                            <!-- Claims injected here -->
+                        </ul>
+                    </div>
+                    <!-- FAB for adding claim -->
+                    <button class="fab" onclick="app.openNewClaimModal()">
+                        <span class="material-symbols-outlined">add</span>
+                    </button>
+                </section>
+                
+                <!-- Voice Note View -->
+                <section id="view-voice-note" class="view">
+                     <div class="voice-container">
+                         <h2>Record Voicemail</h2>
+                         <div class="recording-status">
+                             <div class="pulse-ring hidden"></div>
+                             <span class="material-symbols-outlined mic-large">mic</span>
+                         </div>
+                         <p id="voice-status-text">Tap to start recording</p>
+                         
+                         <div class="transcript-box">
+                             <textarea id="live-transcript" placeholder="Transcript will appear here..." readonly></textarea>
+                         </div>
+                         
+                         <div class="voice-actions">
+                             <button id="btn-toggle-record" class="btn btn-primary btn-large">Start Recording</button>
+                             <div id="post-record-actions" class="hidden" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                                 <button class="btn btn-secondary" onclick="alert('Claim selection to be added')">Save to Claim</button>
+                                 <button class="btn btn-success" onclick="app.openNewTaskModal()">Create Task</button>
+                                 <button class="btn btn-primary" onclick="app.sendEmail('voicemail')">Email Transcript</button>
+                             </div>
+                         </div>
+                     </div>
+                </section>
+                
+                <!-- Dictate Summary View -->
+                <section id="view-dictate-summary" class="view">
+                     <div class="voice-container">
+                         <h2>Inspection Summary</h2>
+                         <p class="subtitle">Dictate findings while walking</p>
+                         <!-- Similar recording UI reused here -->
+                         <div class="recording-status">
+                             <span class="material-symbols-outlined mic-large">assignment_add</span>
+                         </div>
+                         <div class="transcript-box large">
+                             <textarea id="summary-transcript" placeholder="Begin speaking. Exterior damages, interior, etc."></textarea>
+                         </div>
+                         <button id="btn-send-summary" class="btn btn-primary btn-block" onclick="app.sendEmail('summary')">Send Email</button>
+                     </div>
+                </section>
+            </main>
+
+            <!-- Bottom Navigation -->
+            <nav class="bottom-nav">
+                <a href="#" class="nav-item active" data-target="home" onclick="app.navigate('home')">
+                    <span class="material-symbols-outlined">home</span>
+                    <span>Home</span>
+                </a>
+                <a href="#" class="nav-item" data-target="tasks" onclick="app.navigate('tasks')">
+                    <span class="material-symbols-outlined">checklist</span>
+                    <span>Tasks</span>
+                </a>
+                <a href="#" class="nav-item" data-target="claims" onclick="app.navigate('claims')">
+                    <span class="material-symbols-outlined">folder_open</span>
+                    <span>Claims</span>
+                </a>
+                <a href="#" class="nav-item" data-target="settings" onclick="app.navigate('settings')">
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Settings</span>
+                </a>
+            </nav>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <!-- New Task Modal -->
+    <div id="modal-new-task" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>New Task</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <input type="text" id="task-desc" placeholder="What needs to be done?">
+                </div>
+                <div class="voice-input-row">
+                    <button class="icon-btn voice-btn"><span class="material-symbols-outlined">mic</span></button>
+                    <span>Tap to dictate task</span>
+                </div>
+                <div class="input-group">
+                    <select id="task-claim-id">
+                        <option value="">No Claim (General Task)</option>
+                        <!-- Options injected -->
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="app.saveTask()">Save Task</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Claim Modal -->
+    <div id="modal-new-claim" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>New Claim</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label>Claim Number</label>
+                    <div style="display: flex; align-items: center;">
+                        <span style="padding: 12px; background: var(--bg-surface-light); border-top-left-radius: 8px; border-bottom-left-radius: 8px; border: 1px solid var(--border-color); border-right: none; font-weight: bold;">30-</span>
+                        <input type="text" id="claim-number-input" placeholder="e.g. 97L7" required style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Insured Name (Optional)</label>
+                    <input type="text" id="claim-name-input" placeholder="John Doe">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="app.saveClaim()">Create Claim</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/voice.js"></script>
+    <script src="js/app.js"></script>
+    
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
