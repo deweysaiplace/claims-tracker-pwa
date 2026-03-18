@@ -90,5 +90,49 @@ Do NOT wrap the JSON in markdown blocks. Return the raw JSON block directly.`;
             console.error("Brain Parsing Error:", error);
             throw error;
         }
+    },
+
+    async processXactimate(text) {
+        if (!text.trim()) return null;
+        
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("No API key provided.");
+
+        const systemPrompt = `You are an expert Xactimate estimator. 
+Analyze the following dictated inspection summary.
+Extract the corresponding Xactimate line-item codes and material descriptions.
+Return your answer as a clean, concise bulleted list of the codes and short descriptions. 
+Ignore quantities unless explicitly dictated.
+Output ONLY the bulleted list, no conversational filler.`;
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-beta',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: text }
+                    ],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error("Grok API Error:", errText);
+                throw new Error("Failed connecting to Grok Brain API.");
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (error) {
+            console.error("Xactimate Parse Error:", error);
+            throw error;
+        }
     }
 };

@@ -70,11 +70,20 @@ const app = {
             'tasks': 'Tasks',
             'claims': 'Claims',
             'voice-note': 'Voicemail',
-            'dictate-summary': 'Summary'
+            'dictate-summary': 'Summary',
+            'settings': 'Settings'
         };
         const titleEl = document.getElementById('current-view-title');
         if(titleEl && titles[viewId]) {
             titleEl.textContent = titles[viewId];
+        }
+        
+        // Populate settings if navigating to settings
+        if (viewId === 'settings') {
+            const apiKeyInput = document.getElementById('setting-api-key');
+            if (apiKeyInput) {
+                apiKeyInput.value = localStorage.getItem('GROK_API_KEY') || '';
+            }
         }
         
         this.currentView = viewId;
@@ -296,8 +305,17 @@ const app = {
         const subjectName = type === 'summary' ? 'Inspection Summary' : 'Voicemail Transcript';
         const subject = encodeURIComponent(`${subjectName}`);
         
+        let fullText = text;
+
+        if (type === 'summary') {
+            const xactimateEl = document.getElementById('xactimate-transcript');
+            if (xactimateEl && xactimateEl.value.trim() !== '') {
+                fullText += "\n\n=== Xactimate Codes ===\n" + xactimateEl.value.trim();
+            }
+        }
+        
         // Add footer for the sender
-        const fullText = text + "\n\n---\nSent from Claims Tracker PWA\nvia hiJasonD@gmail.com";
+        fullText += "\n\n---\nSent from Claims Tracker PWA\nvia hiJasonD@gmail.com";
         const body = encodeURIComponent(fullText);
         
         // Trigger the native mailto protocol link
@@ -401,6 +419,70 @@ const app = {
             alert("Error communicating with AI Brain. Make sure you set your API key in the Brain tab first.");
         } finally {
             btn.innerHTML = originalBtnText;
+            btn.disabled = false;
+        }
+    },
+
+    saveApiKey() {
+        const input = document.getElementById('setting-api-key');
+        if (!input) return;
+        const key = input.value.trim();
+        if (key) {
+            localStorage.setItem('GROK_API_KEY', key);
+            alert('API Key saved successfully!');
+        } else {
+            localStorage.removeItem('GROK_API_KEY');
+            alert('API Key removed.');
+        }
+    },
+
+    sendFeedback() {
+        const to = 'Jason.deuermeyer.xm1h@statefarm.com'; // Adjust to wherever the feedback goes
+        const subject = encodeURIComponent('App Feedback / Issue Report');
+        const body = encodeURIComponent('Please describe the issue or feature request:\n\n\n\n---\nApp Version: 1.0.0\nDevice: ' + navigator.userAgent);
+        window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    },
+
+    async extractXactimateCodes() {
+        const transcriptEl = document.getElementById('summary-transcript');
+        const xacContainer = document.getElementById('xactimate-output-container');
+        const xacTranscriptEl = document.getElementById('xactimate-transcript');
+        const btn = document.getElementById('btn-extract-xactimate');
+        
+        const text = transcriptEl.value.trim();
+        if (!text) {
+            alert("No dictation found to extract codes from. Please dictate first.");
+            return;
+        }
+
+        const originalBtnHTML = btn.innerHTML;
+
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Extracting...';
+            btn.disabled = true;
+
+            const apiKey = localStorage.getItem('GROK_API_KEY');
+            if (!apiKey) {
+                alert("Please save your API key in the Settings tab first.");
+                this.navigate('settings');
+                return;
+            }
+
+            // Provide context for AI Brain to understand the task
+            const promptContext = "Analyze the following inspection dictation and extract the corresponding Xactimate codes and materials as a concise bulleted list. Do not include unneeded fluff. Dictation: " + text;
+            
+            // Bypass the strict JSON schema from `processCommand` by calling the backend directly or via new flag. 
+            // Wait, we need to add processXactimate to aiBrain
+            const responseText = await aiBrain.processXactimate(promptContext);
+            
+            xacTranscriptEl.value = responseText;
+            xacContainer.classList.remove('hidden');
+
+        } catch(e) {
+            console.error(e);
+            alert("Error extracting Xactimate codes.");
+        } finally {
+            btn.innerHTML = originalBtnHTML;
             btn.disabled = false;
         }
     },

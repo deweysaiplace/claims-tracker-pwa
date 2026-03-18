@@ -70,12 +70,24 @@ const voiceModule = {
             });
         }
         
+        // Summary dictate record btn
+        const summaryRecordBtn = document.getElementById('btn-summary-record');
+        if (summaryRecordBtn) {
+            summaryRecordBtn.addEventListener('click', () => {
+                this.targetElementId = 'summary-transcript';
+                this.toggleRecording();
+            });
+        }
+        
         // Modal task voice button
         document.querySelectorAll('.voice-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.targetElementId = 'task-desc';
-                this.toggleRecording();
+                // Ensure this is only for the modal task to avoid conflicts
+                if (btn.closest('#modal-new-task')) {
+                    this.targetElementId = 'task-desc';
+                    this.toggleRecording();
+                }
             });
         });
     },
@@ -108,7 +120,7 @@ const voiceModule = {
         const statusText = document.getElementById('voice-status-text');
         const postActions = document.getElementById('post-record-actions');
         
-        if (toggleBtn) {
+        if (toggleBtn && this.targetElementId === 'live-transcript') {
             if (isRecording) {
                 toggleBtn.textContent = 'Stop Recording';
                 toggleBtn.classList.replace('btn-primary', 'btn-danger'); // Add btn-danger to css later
@@ -126,7 +138,26 @@ const voiceModule = {
             }
         }
         
-        // Also update Brain UI if that's the active button
+        // Update Summary View UI
+        const summaryBtn = document.getElementById('btn-summary-record');
+        const summaryPulse = document.getElementById('summary-pulse-ring');
+        const summaryStatus = document.getElementById('summary-status-text');
+        
+        if (summaryBtn && this.targetElementId === 'summary-transcript') {
+            if (isRecording) {
+                summaryBtn.innerHTML = '<span class="material-symbols-outlined">stop</span> Stop Dictating';
+                summaryBtn.classList.replace('btn-primary', 'btn-danger');
+                if(summaryPulse) summaryPulse.classList.remove('hidden');
+                if(summaryStatus) summaryStatus.textContent = 'Listening to your dictation...';
+            } else {
+                summaryBtn.innerHTML = '<span class="material-symbols-outlined">mic</span> Start Dictating';
+                summaryBtn.classList.replace('btn-danger', 'btn-primary');
+                if(summaryPulse) summaryPulse.classList.add('hidden');
+                if(summaryStatus) summaryStatus.textContent = 'Tap to start dictating';
+            }
+        }
+        
+        // Update Brain UI
         const brainBtn = document.getElementById('btn-brain-record');
         if (brainBtn && this.targetElementId === 'brain-transcript') {
             if (isRecording) {
