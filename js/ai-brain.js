@@ -134,5 +134,101 @@ Output ONLY the bulleted list, no conversational filler.`;
             console.error("Xactimate Parse Error:", error);
             throw error;
         }
+    },
+    
+    async analyzeImage(base64DataUrl) {
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("Please save your API key in the Settings tab.");
+
+        // Clean base64 string
+        const base64Image = base64DataUrl.split(',')[1];
+        if (!base64Image) throw new Error("Invalid image format");
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    // Must use vision model
+                    model: 'grok-vision-beta',
+                    messages: [
+                        { 
+                            role: 'user', 
+                            content: [
+                                {
+                                    type: "text",
+                                    text: "You are an expert claims adjuster. Analyze this photo. List any visible damage (hail, wind, water, wear and tear) and its severity. Be concise and professional."
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: {
+                                        url: `data:image/jpeg;base64,${base64Image}`
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error("Grok Vision API Error: " + errText);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (error) {
+            console.error("Vision Error:", error);
+            throw error;
+        }
+    },
+    
+    async askPolicy(pdfText, question) {
+        if (!pdfText.trim() || !question.trim()) return null;
+        
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("Please save your API key in the Settings tab.");
+
+        const systemPrompt = `You are a strict and highly knowledgeable insurance policy analyst. 
+You will be provided with the raw extracted text of an insurance policy document, followed by a user's question.
+Base your answer STRICTLY on the provided policy text. Do not invent coverages.
+If the answer is not in the policy text, explicitly state that it is not found.
+Cite the relevant section if possible.`;
+
+        const userPrompt = `POLICY TEXT:\n---\n${pdfText}\n---\n\nQUESTION: ${question}`;
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-beta',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error("Grok API Error: " + errText);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (error) {
+            console.error("Policy Chat Error:", error);
+            throw error;
+        }
     }
 };

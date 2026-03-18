@@ -22,6 +22,12 @@
     
     <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
 </head>
 <body>
     <!-- App Shell -->
@@ -86,6 +92,28 @@
                             </div>
                             <h3>Quick Task</h3>
                             <p>Text or Voice</p>
+                        </button>
+                        
+                        <button class="action-card" onclick="app.navigate('vision')" style="grid-column: span 1;">
+                            <div class="action-icon vision-icon" style="background: var(--info-color); color: white;">
+                                <span class="material-symbols-outlined">center_focus_strong</span>
+                            </div>
+                            <h3>AI Vision</h3>
+                            <p>Damage Scan</p>
+                        </button>
+                        <button class="action-card" onclick="app.navigate('policy-chat')" style="grid-column: span 1;">
+                            <div class="action-icon doc-icon" style="background: var(--warning-color); color: white;">
+                                <span class="material-symbols-outlined">description</span>
+                            </div>
+                            <h3>Policy Chat</h3>
+                            <p>PDF AI Analyst</p>
+                        </button>
+                        <button class="action-card" onclick="app.navigate('weather')" style="grid-column: span 1;">
+                            <div class="action-icon weather-icon" style="background: var(--primary-color); color: white;">
+                                <span class="material-symbols-outlined">thunderstorm</span>
+                            </div>
+                            <h3>Date of Loss</h3>
+                            <p>Weather History</p>
                         </button>
                     </div>
 
@@ -245,6 +273,97 @@
                             <button id="btn-brain-submit" class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:8px;">
                                 <span class="material-symbols-outlined">send</span> Send Typed Command
                             </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AI Vision View -->
+                <section id="view-vision" class="view">
+                    <div class="view-content voice-container">
+                        <h2>AI Image Analysis</h2>
+                        <p class="subtitle">Upload a photo for damage recognition</p>
+                        
+                        <div style="margin-top: 20px; text-align: center;">
+                            <input type="file" id="vision-file-input" accept="image/*" style="display: none;" onchange="app.handleVisionImageSelect(event)">
+                            <button class="btn btn-primary btn-large" onclick="document.getElementById('vision-file-input').click()" style="display:flex; align-items:center; justify-content:center; gap:8px; margin: 0 auto;">
+                                <span class="material-symbols-outlined">photo_camera</span> Select or Take Photo
+                            </button>
+                            
+                            <div id="vision-preview-container" class="hidden" style="margin-top: 20px;">
+                                <img id="vision-preview-img" src="" alt="Selected Photo" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <button id="btn-analyze-vision" class="btn btn-success btn-block" onclick="app.analyzePhoto()" style="margin-top: 15px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                    <span class="material-symbols-outlined">psychology</span> Analyze Damage
+                                </button>
+                            </div>
+                            
+                            <div id="vision-output-container" class="hidden" style="margin-top: 20px; text-align: left;">
+                                <h3>AI Analysis Results</h3>
+                                <div class="transcript-box">
+                                    <textarea id="vision-transcript" readonly style="height: 150px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Policy Chat View -->
+                <section id="view-policy-chat" class="view">
+                    <div class="view-content voice-container">
+                        <h2>Policy Chat</h2>
+                        <p class="subtitle">Upload a PDF policy and ask questions</p>
+                        
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div class="input-group">
+                                <label>1. Select Policy Document (PDF)</label>
+                                <input type="file" id="policy-file-input" accept="application/pdf">
+                                <div id="policy-load-status" style="margin-top: 5px; font-size: 0.9em; color: var(--primary-color);"></div>
+                            </div>
+                            
+                            <div class="input-group" style="margin-top: 15px;">
+                                <label>2. Ask your question</label>
+                                <textarea id="policy-question" placeholder="e.g., Does this policy cover wind damage to a standalone fence?"></textarea>
+                            </div>
+                            
+                            <button id="btn-policy-ask" class="btn btn-primary btn-block" onclick="app.askPolicyQuestion()" style="margin-top: 10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <span class="material-symbols-outlined">forum</span> Ask Policy
+                            </button>
+                        </div>
+                        
+                        <div id="policy-answer-container" class="hidden" style="margin-top: 20px;">
+                            <h3>Answer</h3>
+                            <div class="transcript-box">
+                                <textarea id="policy-answer" readonly style="height: 150px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Weather View -->
+                <section id="view-weather" class="view">
+                    <div class="view-content voice-container">
+                        <h2>Date of Loss Weather</h2>
+                        <p class="subtitle">Retrieve historical wind & rain data</p>
+                        
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div class="input-group">
+                                <label>Detailed Address or City, ST</label>
+                                <input type="text" id="weather-address" placeholder="e.g., 123 Main St, Dallas, TX" required>
+                            </div>
+                            <div class="input-group">
+                                <label>Date of Loss</label>
+                                <input type="date" id="weather-date" required>
+                            </div>
+                            
+                            <button id="btn-weather-pull" class="btn btn-primary btn-block" onclick="app.pullWeather()" style="margin-top: 10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <span class="material-symbols-outlined">cloud_sync</span> Pull Weather Data
+                            </button>
+                        </div>
+                        
+                        <div id="weather-output-container" class="hidden" style="margin-top: 20px;">
+                            <h3>Historical Data</h3>
+                            <div class="transcript-box">
+                                <textarea id="weather-output" readonly style="height: 120px; font-family: monospace;"></textarea>
+                            </div>
                         </div>
                     </div>
                 </section>

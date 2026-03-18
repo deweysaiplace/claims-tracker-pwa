@@ -71,7 +71,10 @@ const app = {
             'claims': 'Claims',
             'voice-note': 'Voicemail',
             'dictate-summary': 'Summary',
-            'settings': 'Settings'
+            'settings': 'Settings',
+            'vision': 'AI Vision',
+            'policy-chat': 'Policy Chat',
+            'weather': 'Weather Check'
         };
         const titleEl = document.getElementById('current-view-title');
         if(titleEl && titles[viewId]) {
@@ -483,6 +486,132 @@ const app = {
             alert("Error extracting Xactimate codes.");
         } finally {
             btn.innerHTML = originalBtnHTML;
+            btn.disabled = false;
+        }
+    },
+
+    // --- NEW ADVANCED FEATURES --- //
+
+    handleVisionImageSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const previewContainer = document.getElementById('vision-preview-container');
+        const previewImg = document.getElementById('vision-preview-img');
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImg.src = e.target.result;
+            // Store base64 globally or attached to the element for standard use
+            this.currentVisionBase64 = e.target.result;
+            previewContainer.classList.remove('hidden');
+            document.getElementById('vision-output-container').classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    },
+
+    async analyzePhoto() {
+        if (!this.currentVisionBase64) return alert("Select a photo first.");
+        
+        const btn = document.getElementById('btn-analyze-vision');
+        const outBox = document.getElementById('vision-output-container');
+        const transcript = document.getElementById('vision-transcript');
+        const origBtnText = btn.innerHTML;
+        
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Analyzing...';
+            btn.disabled = true;
+            
+            const result = await aiBrain.analyzeImage(this.currentVisionBase64);
+            transcript.value = result;
+            outBox.classList.remove('hidden');
+        } catch(e) {
+            console.error(e);
+            alert("Error analyzing photo. " + e.message);
+        } finally {
+            btn.innerHTML = origBtnText;
+            btn.disabled = false;
+        }
+    },
+
+    async askPolicyQuestion() {
+        const fileInput = document.getElementById('policy-file-input');
+        const questionInput = document.getElementById('policy-question');
+        const btn = document.getElementById('btn-policy-ask');
+        const outBox = document.getElementById('policy-answer-container');
+        const answerBox = document.getElementById('policy-answer');
+        
+        const file = fileInput.files[0];
+        const question = questionInput.value.trim();
+        
+        if (!file || !question) return alert("Please select a PDF and type a question.");
+        if (file.type !== "application/pdf") return alert("File must be a PDF.");
+        
+        const origBtnText = btn.innerHTML;
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Reading Policy...';
+            btn.disabled = true;
+            
+            // Extract text using PDF.js
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = '';
+            // Limit to first 100 pages just in case to prevent browser crash, though Grok can handle more
+            const maxPages = Math.min(pdf.numPages, 100); 
+            for (let i = 1; i <= maxPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                fullText += textContent.items.map(item => item.str).join(' ') + '\\n';
+            }
+            
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Thinking...';
+            
+            const result = await aiBrain.askPolicy(fullText, question);
+            answerBox.value = result;
+            outBox.classList.remove('hidden');
+            
+        } catch(e) {
+            console.error(e);
+            alert("Error processing policy document. Make sure it's a valid PDF.");
+        } finally {
+            btn.innerHTML = origBtnText;
+            btn.disabled = false;
+        }
+    },
+
+    async pullWeather() {
+        const address = document.getElementById('weather-address').value.trim();
+        const date = document.getElementById('weather-date').value;
+        const outBox = document.getElementById('weather-output-container');
+        const textEl = document.getElementById('weather-output');
+        const btn = document.getElementById('btn-weather-pull');
+
+        if (!address || !date) return alert("Please enter both Address and Date.");
+
+        const origBtnText = btn.innerHTML;
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Pulling Data...';
+            btn.disabled = true;
+            outBox.classList.add('hidden');
+
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(address)}&count=1`);
+            const geoData = await geoRes.json();
+            if(!geoData.results || geoData.results.length === 0) throw new Error("Could not find that location.");
+            const loc = geoData.results[0];
+
+            const weatherRes = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${loc.latitude}&longitude=${loc.longitude}&start_date=${date}&end_date=${date}&daily=weather_code,temperature_2m_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max&timezone=auto`);
+            const weatherData = await weatherRes.json();
+
+            if(!weatherData.daily) throw new Error("No weather data found for this date.");
+            
+            const w = weatherData.daily;
+            textEl.value = `📍 Location: ${loc.name}, ${loc.admin1 || ''}\\n📅 Date: ${date}\\n\\n🌪️ Max Wind Speed: ${w.wind_speed_10m_max[0]} km/h\\n🌬️ Max Wind Gusts: ${w.wind_gusts_10m_max[0]} km/h\\n🌧️ Precipitation: ${w.precipitation_sum[0]} mm\\n🌡️ Max Temp: ${w.temperature_2m_max[0]}°C`;
+            outBox.classList.remove('hidden');
+        } catch(e) {
+            console.error(e);
+            alert(e.message);
+        } finally {
+            btn.innerHTML = origBtnText;
             btn.disabled = false;
         }
     },
