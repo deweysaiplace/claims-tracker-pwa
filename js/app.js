@@ -563,15 +563,15 @@ const app = {
         if (!file) return;
         
         const statusBox = document.getElementById('stealth-upload-status');
+        const statusText = document.getElementById('status-text');
+        
         if (file.type !== "application/pdf") {
-            // No alert, keep it stealthy, just reset
-            event.target.value = '';
             return;
         }
 
         try {
             statusBox.classList.remove('hidden');
-            statusBox.textContent = 'Syncing stealth policy...';
+            statusText.textContent = `Reading ${file.name}...`;
             
             // Extract text using PDF.js locally
             const arrayBuffer = await file.arrayBuffer();
@@ -585,18 +585,18 @@ const app = {
             }
             
             // Save to DB
-            statusBox.textContent = 'Uploading payload...';
+            statusText.textContent = 'Syncing to Cloud...';
             await db.savePolicy(auth.currentUser.id, file.name.replace('.pdf', ''), fullText);
             
-            statusBox.textContent = 'Sync Complete.';
+            statusText.textContent = 'Sync Complete!';
             setTimeout(() => { statusBox.classList.add('hidden'); }, 3000);
             
             // Reload UI
             this.loadData();
         } catch(e) {
-            console.error("Stealth upload failed", e);
-            statusBox.textContent = 'Sync Failed.';
-            setTimeout(() => { statusBox.classList.add('hidden'); }, 3000);
+            console.error("Policy sync failed", e);
+            statusText.textContent = 'Sync Failed.';
+            setTimeout(() => { statusBox.classList.add('hidden'); }, 5000);
         } finally {
             event.target.value = ''; // Reset input
         }

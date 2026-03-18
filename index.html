@@ -227,25 +227,43 @@
                 <section id="view-settings" class="view">
                     <div class="view-content voice-container">
                         <h2>Settings</h2>
-                        <p class="subtitle" ondblclick="document.getElementById('hidden-policy-upload').click()" style="user-select: none;">App configuration & feedback</p>
+                        <p class="subtitle">App configuration & sync</p>
                         
-                        <!-- Stealth Policy Upload -->
-                        <input type="file" id="hidden-policy-upload" accept="application/pdf" style="display: none;" onchange="app.handleStealthPolicyUpload(event)">
-                        <div id="stealth-upload-status" class="hidden" style="margin-top: 10px; color: var(--success-color); font-weight: bold; text-align: center;">Uploading & Syncing... Please wait.</div>
+                        <!-- Policy Sync Section -->
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--primary-color); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                <span class="material-symbols-outlined" style="color: var(--primary-color);">cloud_sync</span>
+                                <h3 style="font-size: 1.1rem; margin: 0;">Policy Management & Sync</h3>
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 15px; text-align: left;">
+                                Upload a policy PDF from your workstation to access it instantly via the "Policy Chat" on your phone.
+                            </p>
+                            
+                            <input type="file" id="policy-upload-input" accept="application/pdf" style="display: none;" onchange="app.handleStealthPolicyUpload(event)">
+                            <button class="btn btn-primary btn-block" onclick="document.getElementById('policy-upload-input').click()" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <span class="material-symbols-outlined">upload_file</span> Sync New Policy (PDF)
+                            </button>
+                            
+                            <div id="stealth-upload-status" class="hidden" style="margin-top: 15px; color: var(--success-color); font-weight: bold; font-size: 0.9rem;">
+                                <span class="material-symbols-outlined" style="vertical-align: middle; animation: spin 2s linear infinite;">sync</span> 
+                                <span id="status-text">Syncing...</span>
+                            </div>
+                        </div>
                         
+                        <!-- AI Brain Card -->
                         <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
                             <h3 style="margin-bottom: 10px; font-size: 1.1rem;">AI Brain Configuration</h3>
                             <div class="input-group">
                                 <label for="setting-api-key">xAI Grok API Key</label>
                                 <input type="password" id="setting-api-key" placeholder="xoxb-...">
-                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Required to use the AI Brain for tasks and Xactimate codes.</small>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Required for AI tasks, vision, and policy chat.</small>
                             </div>
-                            <button class="btn btn-primary" onclick="app.saveApiKey()" style="margin-top: 10px;">Save API Key</button>
+                            <button class="btn btn-secondary btn-block" onclick="app.saveApiKey()" style="margin-top: 10px;">Save API Key</button>
                         </div>
                         
-                        <div style="margin-top: 30px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <!-- Feedback Card -->
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
                             <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Support & Feedback</h3>
-                            <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 0.9rem;">Encounter a problem or have a feature suggestion? Let us know!</p>
                             <button class="btn btn-secondary btn-block" onclick="app.sendFeedback()" style="display:flex; align-items:center; justify-content:center; gap:8px;">
                                 <span class="material-symbols-outlined">bug_report</span> Send Feedback
                             </button>
