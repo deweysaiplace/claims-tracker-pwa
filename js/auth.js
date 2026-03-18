@@ -22,12 +22,11 @@ const auth = {
                 e.preventDefault();
                 const pin = document.getElementById('pin').value;
                 
-                // We use the user's gmail as the hardcoded login user
-                const email = 'hiJasonD@gmail.com'; 
+                // We use a dummy email because you requested a PIN-only workflow
+                const email = 'jason@claims.com'; 
                 
-                // Supabase requires 6 character minimum passwords, 
-                // so we pad the 4 digit PIN with '00' behind the scenes.
-                const password = pin + '00';
+                // Use the exact 8-digit PIN you provide (e.g. 12261978) as the password
+                const password = pin;
                 
                 // Hide any previous errors
                 this.showError('');
