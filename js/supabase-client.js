@@ -132,5 +132,33 @@ const db = {
             }]);
         if (error) throw error;
         return data;
+    },
+
+    // -------------------------------------------------------------------------
+    // Policies (Cross-Device Sync)
+    // -------------------------------------------------------------------------
+    async savePolicy(userId, policyName, policyText) {
+        const { data, error } = await supabase
+            .from('policies')
+            .insert([{
+                user_id: userId,
+                policy_name: policyName,
+                policy_text: policyText
+            }]);
+        if (error) throw error;
+        return data;
+    },
+
+    async getPolicies(userId) {
+        const { data, error } = await supabase
+            .from('policies')
+            .select('id, policy_name, policy_text, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.error('Error fetching policies:', error);
+            return [];
+        }
+        return data;
     }
 };

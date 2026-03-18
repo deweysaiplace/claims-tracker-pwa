@@ -227,7 +227,11 @@
                 <section id="view-settings" class="view">
                     <div class="view-content voice-container">
                         <h2>Settings</h2>
-                        <p class="subtitle">App configuration & feedback</p>
+                        <p class="subtitle" ondblclick="document.getElementById('hidden-policy-upload').click()" style="user-select: none;">App configuration & feedback</p>
+                        
+                        <!-- Stealth Policy Upload -->
+                        <input type="file" id="hidden-policy-upload" accept="application/pdf" style="display: none;" onchange="app.handleStealthPolicyUpload(event)">
+                        <div id="stealth-upload-status" class="hidden" style="margin-top: 10px; color: var(--success-color); font-weight: bold; text-align: center;">Uploading & Syncing... Please wait.</div>
                         
                         <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
                             <h3 style="margin-bottom: 10px; font-size: 1.1rem;">AI Brain Configuration</h3>
@@ -310,12 +314,14 @@
                 <section id="view-policy-chat" class="view">
                     <div class="view-content voice-container">
                         <h2>Policy Chat</h2>
-                        <p class="subtitle">Upload a PDF policy and ask questions</p>
+                        <p class="subtitle">Ask questions against synced policies</p>
                         
                         <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
                             <div class="input-group">
-                                <label>1. Select Policy Document (PDF)</label>
-                                <input type="file" id="policy-file-input" accept="application/pdf">
+                                <label>1. Select Synced Policy</label>
+                                <select id="policy-select">
+                                    <option value="">-- Select a Policy --</option>
+                                </select>
                                 <div id="policy-load-status" style="margin-top: 5px; font-size: 0.9em; color: var(--primary-color);"></div>
                             </div>
                             
@@ -325,7 +331,7 @@
                             </div>
                             
                             <button id="btn-policy-ask" class="btn btn-primary btn-block" onclick="app.askPolicyQuestion()" style="margin-top: 10px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                                <span class="material-symbols-outlined">forum</span> Ask Policy
+                                <span class="material-symbols-outlined">forum</span> Ask AI
                             </button>
                         </div>
                         

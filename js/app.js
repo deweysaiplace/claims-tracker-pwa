@@ -105,6 +105,10 @@ const app = {
 
             const tasks = await db.getTasks(auth.currentUser.id);
             this.renderTasks(tasks);
+            
+            // Load Cross-Device Policies
+            const policies = await db.getPolicies(auth.currentUser.id);
+            this.populatePolicyDropdown(policies);
         } catch(e) {
             console.error("Error loading data:", e);
         }
@@ -182,6 +186,26 @@ const app = {
                 opt.textContent = claim.claim_number;
                 select.appendChild(opt);
             }
+        });
+    },
+
+    populatePolicyDropdown(policies) {
+        const select = document.getElementById('policy-select');
+        if (!select) return;
+        
+        // Keep the first default option
+        const defaultOpt = select.options[0];
+        select.innerHTML = '';
+        select.appendChild(defaultOpt);
+
+        // Store policies globally for quick access during chat
+        this.loadedPolicies = policies;
+
+        policies.forEach(policy => {
+            const opt = document.createElement('option');
+            opt.value = policy.id;
+            opt.textContent = policy.policy_name;
+            select.appendChild(opt);
         });
     },
 
@@ -534,29 +558,25 @@ const app = {
         }
     },
 
-    async askPolicyQuestion() {
-        const fileInput = document.getElementById('policy-file-input');
-        const questionInput = document.getElementById('policy-question');
-        const btn = document.getElementById('btn-policy-ask');
-        const outBox = document.getElementById('policy-answer-container');
-        const answerBox = document.getElementById('policy-answer');
+    async handleStealthPolicyUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
         
-        const file = fileInput.files[0];
-        const question = questionInput.value.trim();
-        
-        if (!file || !question) return alert("Please select a PDF and type a question.");
-        if (file.type !== "application/pdf") return alert("File must be a PDF.");
-        
-        const origBtnText = btn.innerHTML;
+        const statusBox = document.getElementById('stealth-upload-status');
+        if (file.type !== "application/pdf") {
+            // No alert, keep it stealthy, just reset
+            event.target.value = '';
+            return;
+        }
+
         try {
-            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Reading Policy...';
-            btn.disabled = true;
+            statusBox.classList.remove('hidden');
+            statusBox.textContent = 'Syncing stealth policy...';
             
-            // Extract text using PDF.js
+            // Extract text using PDF.js locally
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';
-            // Limit to first 100 pages just in case to prevent browser crash, though Grok can handle more
             const maxPages = Math.min(pdf.numPages, 100); 
             for (let i = 1; i <= maxPages; i++) {
                 const page = await pdf.getPage(i);
@@ -564,15 +584,51 @@ const app = {
                 fullText += textContent.items.map(item => item.str).join(' ') + '\\n';
             }
             
-            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Thinking...';
+            // Save to DB
+            statusBox.textContent = 'Uploading payload...';
+            await db.savePolicy(auth.currentUser.id, file.name.replace('.pdf', ''), fullText);
             
-            const result = await aiBrain.askPolicy(fullText, question);
+            statusBox.textContent = 'Sync Complete.';
+            setTimeout(() => { statusBox.classList.add('hidden'); }, 3000);
+            
+            // Reload UI
+            this.loadData();
+        } catch(e) {
+            console.error("Stealth upload failed", e);
+            statusBox.textContent = 'Sync Failed.';
+            setTimeout(() => { statusBox.classList.add('hidden'); }, 3000);
+        } finally {
+            event.target.value = ''; // Reset input
+        }
+    },
+
+    async askPolicyQuestion() {
+        const select = document.getElementById('policy-select');
+        const questionInput = document.getElementById('policy-question');
+        const btn = document.getElementById('btn-policy-ask');
+        const outBox = document.getElementById('policy-answer-container');
+        const answerBox = document.getElementById('policy-answer');
+        
+        const policyId = select.value;
+        const question = questionInput.value.trim();
+        
+        if (!policyId || !question) return alert("Please select a policy and type a question.");
+        
+        const policy = this.loadedPolicies.find(p => p.id === policyId);
+        if (!policy) return alert("Could not find loaded policy data.");
+        
+        const origBtnText = btn.innerHTML;
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Thinking...';
+            btn.disabled = true;
+            
+            const result = await aiBrain.askPolicy(policy.policy_text, question);
             answerBox.value = result;
             outBox.classList.remove('hidden');
             
         } catch(e) {
             console.error(e);
-            alert("Error processing policy document. Make sure it's a valid PDF.");
+            alert("Error communicating with AI. Make sure your API key is correct.");
         } finally {
             btn.innerHTML = origBtnText;
             btn.disabled = false;
