@@ -148,7 +148,9 @@
                              <button id="btn-toggle-record" class="btn btn-primary btn-large">Start Recording</button>
                              <div id="post-record-actions" class="hidden" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
                                  <button class="btn btn-secondary" onclick="alert('Claim selection to be added')">Save to Claim</button>
-                                 <button class="btn btn-success" onclick="app.openNewTaskModal()">Create Task</button>
+                                 <button class="btn btn-success" onclick="app.submitVoicemailToBrain()" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                     <span class="material-symbols-outlined">psychology</span> Extract Task via Brain
+                                 </button>
                                  <button class="btn btn-primary" onclick="app.sendEmail('voicemail')">Email Transcript</button>
                              </div>
                          </div>

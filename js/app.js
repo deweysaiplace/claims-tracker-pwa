@@ -360,6 +360,51 @@ const app = {
         }
     },
 
+    async submitVoicemailToBrain() {
+        const transcriptEl = document.getElementById('live-transcript');
+        const text = transcriptEl.value.trim();
+        
+        if (!text) {
+            alert("No voicemail transcript found to extract a task from.");
+            return;
+        }
+
+        const btn = document.querySelector('#post-record-actions .btn-success');
+        const originalBtnText = btn.innerHTML;
+        
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Extracting...';
+            btn.disabled = true;
+
+            const claims = await db.getAllClaims(auth.currentUser.id);
+            const activeClaims = claims.filter(c => c.status !== 'Closed');
+
+            // Prepend context so Grok analyzes it as a voicemail
+            const promptContext = "I just listened to the following voicemail on speakerphone on my mobile app. Please extract the most logical action item or next step from this transcript as a task for me. Here is the transcript: " + text;
+            
+            const response = await aiBrain.processCommand(promptContext, activeClaims);
+            
+            if (response && response.action === 'create_task') {
+                if(response.task_description) {
+                   await db.addTask(auth.currentUser.id, response.task_description, response.claim_id || null);
+                   alert("Brain Extracted: " + response.task_description + "\n\n(Added to Tasks)");
+                   this.loadData();
+                   this.navigate('tasks');
+                } else {
+                   alert("Brain: Could not determine an actionable task from this voicemail.");
+                }
+            } else {
+                alert("Brain: " + (response.message || "No actionable task detected in this transcript."));
+            }
+        } catch(e) {
+            console.error(e);
+            alert("Error communicating with AI Brain. Make sure you set your API key in the Brain tab first.");
+        } finally {
+            btn.innerHTML = originalBtnText;
+            btn.disabled = false;
+        }
+    },
+
     escapeHTML(str) {
         if (!str) return '';
         const div = document.createElement('div');
