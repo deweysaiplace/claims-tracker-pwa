@@ -20,8 +20,14 @@ const auth = {
         if (loginForm) {
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
+                const pin = document.getElementById('pin').value;
+                
+                // We use the user's gmail as the hardcoded login user
+                const email = 'hiJasonD@gmail.com'; 
+                
+                // Supabase requires 6 character minimum passwords, 
+                // so we pad the 4 digit PIN with '00' behind the scenes.
+                const password = pin + '00';
                 
                 // Hide any previous errors
                 this.showError('');
@@ -35,7 +41,7 @@ const auth = {
                     if (error) throw error;
                     // Note: handleLoginSuccess is triggered by onAuthStateChange automatically
                 } catch (error) {
-                    this.showError(error.message);
+                    this.showError("Incorrect PIN. Please try again.");
                 }
             });
         }
