@@ -469,10 +469,27 @@ const app = {
     },
 
     sendFeedback() {
-        const to = 'Jason.deuermeyer.xm1h@statefarm.com'; // Adjust to wherever the feedback goes
+        const to = 'jason.deuermeyer.xm1h@statefarm.com';
         const subject = encodeURIComponent('App Feedback / Issue Report');
-        const body = encodeURIComponent('Please describe the issue or feature request:\n\n\n\n---\nApp Version: 1.0.0\nDevice: ' + navigator.userAgent);
+        const body = encodeURIComponent('Please describe the issue or feature request:\n\n\n\n---\nApp Version: 1.2.0 (Day 4)\nDevice: ' + navigator.userAgent);
         window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    },
+
+    sendEmail(type) {
+        let text = '';
+        let subject = '';
+        if (type === 'summary') {
+            text = document.getElementById('summary-transcript').value;
+            const xac = document.getElementById('xactimate-transcript').value;
+            if (xac) text += '\n\nXACTIMATE ESTIMATE:\n' + xac;
+            subject = 'Inspection Summary';
+        } else if (type === 'voicemail') {
+            text = document.getElementById('live-transcript').value;
+            subject = 'Transcribed Voicemail';
+        }
+
+        const body = encodeURIComponent(text);
+        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`;
     },
 
     async extractXactimateCodes() {

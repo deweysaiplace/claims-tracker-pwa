@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claims-tracker-v5';
+const CACHE_NAME = 'claims-tracker-v6';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -6,6 +6,7 @@ const urlsToCache = [
   '/js/app.js',
   '/js/auth.js',
   '/js/voice.js',
+  '/js/ai-brain.js',
   '/js/supabase-client.js',
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',

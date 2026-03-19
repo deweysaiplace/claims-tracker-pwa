@@ -71,3 +71,18 @@ ALTER TABLE public.inspection_summaries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only view their own summaries" ON public.inspection_summaries FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can only insert their own summaries" ON public.inspection_summaries FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can only delete their own summaries" ON public.inspection_summaries FOR DELETE USING (auth.uid() = user_id);
+
+-- 5. Create Policies Table (Cross-Device Sync)
+CREATE TABLE public.policies (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users NOT NULL,
+    policy_name TEXT NOT NULL,
+    policy_text TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS for Policies
+ALTER TABLE public.policies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can only view their own policies" ON public.policies FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can only insert their own policies" ON public.policies FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can only delete their own policies" ON public.policies FOR DELETE USING (auth.uid() = user_id);
