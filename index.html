@@ -273,11 +273,14 @@
                             <button class="btn btn-secondary btn-block" onclick="app.saveApiKey()" style="margin-top: 10px;">Save API Key</button>
                         </div>
                         
-                        <!-- Feedback Card -->
+                        <!-- Feedback & Privacy Card -->
                         <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-                            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Support & Feedback</h3>
-                            <button class="btn btn-secondary btn-block" onclick="app.sendFeedback()" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Support & Privacy</h3>
+                            <button class="btn btn-secondary btn-block" onclick="app.sendFeedback()" style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom: 10px;">
                                 <span class="material-symbols-outlined">bug_report</span> Send Feedback
+                            </button>
+                            <button class="btn btn-danger btn-block" onclick="app.wipeAllData()" style="display:flex; align-items:center; justify-content:center; gap:8px; background: #442222;">
+                                <span class="material-symbols-outlined">delete_forever</span> Wipe All Local Data
                             </button>
                         </div>
                     </div>
@@ -294,7 +297,7 @@
                         <p id="brain-status-text" style="text-align:center;">Tap Mic, Speak Command.</p>
                         
                         <div class="transcript-box">
-                            <textarea id="brain-transcript" placeholder="Example: 'Create a task for Jennifer Smith to follow up on the roof estimate'" style="height: 120px;"></textarea>
+                            <textarea id="brain-transcript" placeholder="Example: 'Create a task to follow up on the estimate'" style="height: 120px;"></textarea>
                             <div id="brain-loading" class="hidden" style="text-align:center; padding: 10px; color: var(--primary-color); font-weight: bold;">
                                 <span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Processing Command...
                             </div>

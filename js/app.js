@@ -469,10 +469,18 @@ const app = {
     },
 
     sendFeedback() {
-        const to = 'jason.deuermeyer.xm1h@statefarm.com';
+        const to = 'personal.projects@example.com'; 
         const subject = encodeURIComponent('App Feedback / Issue Report');
-        const body = encodeURIComponent('Please describe the issue or feature request:\n\n\n\n---\nApp Version: 1.2.0 (Day 4)\nDevice: ' + navigator.userAgent);
+        const body = encodeURIComponent('Please describe the issue or feature request:\n\n\n\n---\nApp Version: 1.2.1 (Stealth)\nDevice: ' + navigator.userAgent);
         window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    },
+
+    wipeAllData() {
+        if (confirm("This will clear all local settings and sign you out. Are you sure?")) {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload();
+        }
     },
 
     sendEmail(type) {
