@@ -240,9 +240,14 @@
                             </p>
                             
                             <input type="file" id="policy-upload-input" accept="application/pdf" style="display: none;" onchange="app.handleStealthPolicyUpload(event)">
-                            <button class="btn btn-primary btn-block" onclick="document.getElementById('policy-upload-input').click()" style="display:flex; align-items:center; justify-content:center; gap:8px;">
-                                <span class="material-symbols-outlined">upload_file</span> Sync New Policy (PDF)
-                            </button>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-primary" onclick="document.getElementById('policy-upload-input').click()" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; font-size: 0.9rem;">
+                                    <span class="material-symbols-outlined">upload_file</span> PDF Sync
+                                </button>
+                                <button class="btn btn-success" onclick="app.openCameraScan()" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; font-size: 0.9rem;">
+                                    <span class="material-symbols-outlined">photo_camera</span> Camera Scan
+                                </button>
+                            </div>
                             
                             <div id="stealth-upload-status" class="hidden" style="margin-top: 15px; color: var(--success-color); font-weight: bold; font-size: 0.9rem;">
                                 <span class="material-symbols-outlined" style="vertical-align: middle; animation: spin 2s linear infinite;">sync</span> 
@@ -470,6 +475,49 @@
         </div>
     </div>
 
+    <!-- Policy Camera Scan Modal -->
+    <div id="modal-camera-scan" class="modal hidden">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>Policy Camera Scan</h3>
+                <button class="icon-btn" onclick="app.closeCameraScan()"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 15px;">
+                    Snap a photo of each page. The AI will extract the text and combine them into one policy record.
+                </p>
+                
+                <div id="scan-step-1">
+                    <div class="input-group">
+                        <label>Policy Name (e.g. State Farm Homeowners)</label>
+                        <input type="text" id="scan-policy-name" placeholder="Enter name...">
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="document.getElementById('scan-capture-input').click()">
+                        <span class="material-symbols-outlined">add_a_photo</span> Start Scanning / Add Page
+                    </button>
+                    <input type="file" id="scan-capture-input" accept="image/*" capture="environment" style="display: none;" onchange="app.handlePageCapture(event)">
+                </div>
+
+                <div id="scan-progress-area" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span id="scan-page-count" style="font-weight: bold; color: var(--primary-color);">Pages Scanned: 0</span>
+                        <div id="scan-spinner" class="hidden">
+                            <span class="material-symbols-outlined" style="animation: spin 2s linear infinite; vertical-align: middle;">sync</span> OCR Analyzing...
+                        </div>
+                    </div>
+                    
+                    <div id="scan-preview-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                        <!-- Thumbs of scanned pages added here -->
+                    </div>
+
+                    <button id="btn-finish-scan" class="btn btn-success btn-block disabled" onclick="app.finishPolicyScan()" disabled>
+                        <span class="material-symbols-outlined">cloud_done</span> Finish & Sync Policy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Scripts -->
     <script src="js/supabase-client.js"></script>
     <script src="js/auth.js"></script>

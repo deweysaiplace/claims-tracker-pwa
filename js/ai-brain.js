@@ -230,5 +230,50 @@ Cite the relevant section if possible.`;
             console.error("Policy Chat Error:", error);
             throw error;
         }
+    },
+
+    async ocrPolicyPage(base64DataUrl) {
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("API Key required");
+
+        const base64Image = base64DataUrl.split(',')[1];
+        
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-vision-beta',
+                    messages: [
+                        { 
+                            role: 'user', 
+                            content: [
+                                {
+                                    type: "text",
+                                    text: "You are a high-precision OCR machine. Extract every single word from this insurance policy page image. Maintain the structure as much as possible but prioritize accuracy of the text. Output ONLY the extracted text, no conversational filler."
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: {
+                                        url: `data:image/jpeg;base64,${base64Image}`
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    temperature: 0
+                })
+            });
+
+            if (!response.ok) throw new Error("Grok OCR Error");
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (error) {
+            console.error("OCR Error:", error);
+            throw error;
+        }
     }
 };

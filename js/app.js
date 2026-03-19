@@ -1,5 +1,10 @@
 const app = {
     currentView: 'home',
+    currentClaimId: null,
+    currentVisionBase64: null,
+    currentScanPages: [],
+    scannedImagesCount: 0,
+    loadedPolicies: [],
 
     init() {
         this.bindEvents();
@@ -669,6 +674,104 @@ const app = {
         } finally {
             btn.innerHTML = origBtnText;
             btn.disabled = false;
+        }
+    },
+
+    // --- CAMERA SCAN FEATURES --- //
+    
+    openCameraScan() {
+        document.getElementById('modal-camera-scan').classList.remove('hidden');
+        this.currentScanPages = [];
+        this.scannedImagesCount = 0;
+        document.getElementById('scan-page-count').textContent = 'Pages Scanned: 0';
+        document.getElementById('scan-preview-grid').innerHTML = '';
+        document.getElementById('btn-finish-scan').disabled = true;
+        document.getElementById('btn-finish-scan').classList.add('disabled');
+        document.getElementById('scan-progress-area').classList.add('hidden');
+    },
+
+    closeCameraScan() {
+        if(this.scannedImagesCount > 0 && !confirm("Discard current scan progress?")) return;
+        document.getElementById('modal-camera-scan').classList.add('hidden');
+    },
+
+    async handlePageCapture(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const spinner = document.getElementById('scan-spinner');
+        const progressArea = document.getElementById('scan-progress-area');
+        const grid = document.getElementById('scan-preview-grid');
+        const pageCountEl = document.getElementById('scan-page-count');
+        const finishBtn = document.getElementById('btn-finish-scan');
+
+        try {
+            progressArea.classList.remove('hidden');
+            spinner.classList.remove('hidden');
+            
+            // Convert to base64 for Grok Vision OCR
+            const reader = new FileReader();
+            const textResult = await new Promise((resolve, reject) => {
+                reader.onload = async (e) => {
+                    try {
+                        const base64 = e.target.result;
+                        
+                        // Add thumb to UI immediately
+                        const thumb = document.createElement('div');
+                        thumb.style.cssText = `background: url(${base64}) center/cover; aspect-ratio: 1; border-radius: 4px; border: 2px solid var(--primary-color); position: relative;`;
+                        thumb.innerHTML = `<span style="position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.7); color: white; font-size: 10px; padding: 2px 4px; border-radius: 3px;">P${this.scannedImagesCount + 1}</span>`;
+                        grid.appendChild(thumb);
+
+                        // Run OCR via AI Brain
+                        const extractedText = await aiBrain.ocrPolicyPage(base64);
+                        resolve(extractedText);
+                    } catch(err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            this.currentScanPages.push(textResult);
+            this.scannedImagesCount++;
+            pageCountEl.textContent = `Pages Scanned: ${this.scannedImagesCount}`;
+            
+            if(this.scannedImagesCount > 0) {
+                finishBtn.disabled = false;
+                finishBtn.classList.remove('disabled');
+            }
+
+        } catch(e) {
+            console.error("OCR Error:", e);
+            alert("Could not read that page. Please try again with better lighting.");
+        } finally {
+            spinner.classList.add('hidden');
+            event.target.value = ''; // Reset input
+        }
+    },
+
+    async finishPolicyScan() {
+        const name = document.getElementById('scan-policy-name').value.trim() || `Scanned Policy ${new Date().toLocaleDateString()}`;
+        const finishBtn = document.getElementById('btn-finish-scan');
+        const origText = finishBtn.innerHTML;
+
+        try {
+            finishBtn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Saving...';
+            finishBtn.disabled = true;
+
+            const fullPolicyText = this.currentScanPages.join('\\n\\n--- PAGE BREAK ---\\n\\n');
+            await db.savePolicy(auth.currentUser.id, name, fullPolicyText);
+            
+            alert("Policy synced successfully!");
+            document.getElementById('modal-camera-scan').classList.add('hidden');
+            this.loadData();
+        } catch(e) {
+            console.error(e);
+            alert("Error saving scanned policy.");
+        } finally {
+            finishBtn.innerHTML = origText;
+            finishBtn.disabled = false;
         }
     },
 
