@@ -152,22 +152,23 @@ Output ONLY the bulleted list, no conversational filler.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    // Must use vision model
-                    model: 'grok-vision-beta',
+                    // Use stable version
+                    model: 'grok-2-vision-1212',
                     messages: [
                         { 
                             role: 'user', 
                             content: [
                                 {
                                     type: "text",
-                                    text: "You are an expert claims adjuster. Analyze this photo. List any visible damage (hail, wind, water, wear and tear) and its severity. Be concise and professional."
+                                    text: "You are an expert claims adjuster. Analyze these photos. List any visible damage (hail, wind, water, wear and tear) and its severity. Be concise and professional."
                                 },
-                                {
+                                // Map over base64DataUrls if it's an array
+                                ...(Array.isArray(base64DataUrl) ? base64DataUrl : [base64DataUrl]).map(item => ({
                                     type: "image_url",
                                     image_url: {
-                                        url: `data:image/jpeg;base64,${base64Image}`
+                                        url: item.startsWith('data:') ? item : `data:image/jpeg;base64,${item}`
                                     }
-                                }
+                                }))
                             ]
                         }
                     ],
@@ -246,7 +247,7 @@ Cite the relevant section if possible.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-vision-beta',
+                    model: 'grok-2-vision-1212',
                     messages: [
                         { 
                             role: 'user', 
@@ -258,7 +259,7 @@ Cite the relevant section if possible.`;
                                 {
                                     type: "image_url",
                                     image_url: {
-                                        url: `data:image/jpeg;base64,${base64Image}`
+                                        url: base64DataUrl.startsWith('data:') ? base64DataUrl : `data:image/jpeg;base64,${base64Image}`
                                     }
                                 }
                             ]

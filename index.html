@@ -240,13 +240,20 @@
                             </p>
                             
                             <input type="file" id="policy-upload-input" accept="application/pdf" style="display: none;" onchange="app.handleStealthPolicyUpload(event)">
-                            <div style="display: flex; gap: 10px;">
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                                 <button class="btn btn-primary" onclick="document.getElementById('policy-upload-input').click()" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; font-size: 0.9rem;">
                                     <span class="material-symbols-outlined">upload_file</span> PDF Sync
                                 </button>
                                 <button class="btn btn-success" onclick="app.openCameraScan()" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; font-size: 0.9rem;">
                                     <span class="material-symbols-outlined">photo_camera</span> Camera Scan
                                 </button>
+                            </div>
+
+                            <div class="input-group" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                                <label>Manual Paste (100+ pages)</label>
+                                <input type="text" id="paste-policy-name" placeholder="Policy Name (e.g. State Farm)" style="margin-bottom: 8px;">
+                                <textarea id="paste-policy-text" placeholder="Paste the entire policy text here if you can copy it from the workstation..." style="height: 100px; font-size: 0.8rem;"></textarea>
+                                <button class="btn btn-secondary btn-block" onclick="app.savePastedPolicy()" style="margin-top: 10px;">Save Pasted Text</button>
                             </div>
                             
                             <div id="stealth-upload-status" class="hidden" style="margin-top: 15px; color: var(--success-color); font-weight: bold; font-size: 0.9rem;">
@@ -311,9 +318,9 @@
                         <p class="subtitle">Upload a photo for damage recognition</p>
                         
                         <div style="margin-top: 20px; text-align: center;">
-                            <input type="file" id="vision-file-input" accept="image/*" style="display: none;" onchange="app.handleVisionImageSelect(event)">
+                            <input type="file" id="vision-file-input" accept="image/*" multiple style="display: none;" onchange="app.handleVisionImageSelect(event)">
                             <button class="btn btn-primary btn-large" onclick="document.getElementById('vision-file-input').click()" style="display:flex; align-items:center; justify-content:center; gap:8px; margin: 0 auto;">
-                                <span class="material-symbols-outlined">photo_camera</span> Select or Take Photo
+                                <span class="material-symbols-outlined">add_photo_alternate</span> Select Photos
                             </button>
                             
                             <div id="vision-preview-container" class="hidden" style="margin-top: 20px;">

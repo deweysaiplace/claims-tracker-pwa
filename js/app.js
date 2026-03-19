@@ -1,7 +1,7 @@
 const app = {
     currentView: 'home',
     currentClaimId: null,
-    currentVisionBase64: null,
+    currentVisionBase64: [], // Modified to array
     currentScanPages: [],
     scannedImagesCount: 0,
     loadedPolicies: [],
@@ -522,25 +522,35 @@ const app = {
     // --- NEW ADVANCED FEATURES --- //
 
     handleVisionImageSelect(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        const files = Array.from(event.target.files);
+        if (files.length === 0) return;
         
         const previewContainer = document.getElementById('vision-preview-container');
         const previewImg = document.getElementById('vision-preview-img');
         
+        this.currentVisionBase64 = []; // Reset array
+        previewContainer.classList.remove('hidden');
+        document.getElementById('vision-output-container').classList.add('hidden');
+        
+        // Use the first image for the main preview, but we store all
         const reader = new FileReader();
         reader.onload = (e) => {
             previewImg.src = e.target.result;
-            // Store base64 globally or attached to the element for standard use
-            this.currentVisionBase64 = e.target.result;
-            previewContainer.classList.remove('hidden');
-            document.getElementById('vision-output-container').classList.add('hidden');
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(files[0]);
+
+        // Convert all to base64
+        files.forEach(file => {
+            const r = new FileReader();
+            r.onload = (e) => {
+                this.currentVisionBase64.push(e.target.result);
+            };
+            r.readAsDataURL(file);
+        });
     },
 
     async analyzePhoto() {
-        if (!this.currentVisionBase64) return alert("Select a photo first.");
+        if (!this.currentVisionBase64 || this.currentVisionBase64.length === 0) return alert("Select photos first.");
         
         const btn = document.getElementById('btn-analyze-vision');
         const outBox = document.getElementById('vision-output-container');
@@ -548,7 +558,7 @@ const app = {
         const origBtnText = btn.innerHTML;
         
         try {
-            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Analyzing...';
+            btn.innerHTML = `<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Analyzing ${this.currentVisionBase64.length} Photos...`;
             btn.disabled = true;
             
             const result = await aiBrain.analyzeImage(this.currentVisionBase64);
@@ -556,10 +566,30 @@ const app = {
             outBox.classList.remove('hidden');
         } catch(e) {
             console.error(e);
-            alert("Error analyzing photo. " + e.message);
+            alert("Error analyzing photos. " + e.message);
         } finally {
             btn.innerHTML = origBtnText;
             btn.disabled = false;
+        }
+    },
+
+    async savePastedPolicy() {
+        const nameInput = document.getElementById('paste-policy-name');
+        const textInput = document.getElementById('paste-policy-text');
+        const name = nameInput.value.trim();
+        const text = textInput.value.trim();
+
+        if (!name || !text) return alert("Please enter both a name and the policy text.");
+
+        try {
+            await db.savePolicy(auth.currentUser.id, name, text);
+            alert("Policy saved successfully!");
+            nameInput.value = '';
+            textInput.value = '';
+            this.loadData();
+        } catch(e) {
+            console.error(e);
+            alert("Error saving policy text: " + e.message);
         }
     },
 
