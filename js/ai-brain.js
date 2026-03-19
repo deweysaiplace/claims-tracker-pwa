@@ -1,4 +1,4 @@
-const aiBrain = {
+window.aiBrain = {
     apiUrl: 'https://api.x.ai/v1/chat/completions',
     
     getApiKey() {

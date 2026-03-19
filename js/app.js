@@ -599,6 +599,7 @@ const app = {
         if (!name || !text) return alert("Please enter both a name and the policy text.");
 
         try {
+            if (!window.db) throw new Error("Database client not found. Your workstation might be blocking our connection to Supabase (Database).");
             await db.savePolicy(auth.currentUser.id, name, text);
             alert("Policy saved successfully!");
             nameInput.value = '';

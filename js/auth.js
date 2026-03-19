@@ -1,4 +1,4 @@
-const auth = {
+window.auth = {
     currentUser: null,
 
     init() {
