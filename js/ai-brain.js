@@ -326,7 +326,7 @@ Provide only the code list. If you are unsure of a code, provide the most likely
 
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error("Grok Estimate Analysis Error: " + errText);
+                throw new Error(`Grok Estimate Analysis Error (Status ${response.status}): ${errText}`);
             }
             const data = await response.json();
             return data.choices[0].message.content.trim();
