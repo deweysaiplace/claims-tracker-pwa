@@ -59,7 +59,7 @@ Do NOT wrap the JSON in markdown blocks. Return the raw JSON block directly.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-beta',
+                    model: 'grok-4.20', // Latest flagship model (multimodal)
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: text }
@@ -113,7 +113,7 @@ Output ONLY the bulleted list, no conversational filler.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-beta',
+                    model: 'grok-4.20',
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: text }
@@ -153,7 +153,7 @@ Output ONLY the bulleted list, no conversational filler.`;
                 },
                 body: JSON.stringify({
                     // Use stable version
-                    model: 'grok-2-vision', // Stable alias
+                    model: 'grok-4.20',
                     messages: [
                         { 
                             role: 'user', 
@@ -211,7 +211,7 @@ Cite the relevant section if possible.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-beta',
+                    model: 'grok-4.20',
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt }
@@ -247,7 +247,7 @@ Cite the relevant section if possible.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-2-vision', // Stable alias
+                    model: 'grok-4.20',
                     messages: [
                         { 
                             role: 'user', 
@@ -295,7 +295,7 @@ Cite the relevant section if possible.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-2-vision', // Stable alias
+                    model: 'grok-4.20',
                     messages: [
                         { 
                             role: 'user', 
