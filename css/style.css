@@ -10,7 +10,66 @@
     --success-color: #34C759;
     --border-color: #333333;
     --nav-height: 65px;
+    --transition-speed: 0.3s;
 }
+
+/* Light Theme Variables */
+body.light-theme {
+    --bg-dark: #f4f7f6;
+    --bg-surface: #ffffff;
+    --bg-surface-light: #f8f9fa;
+    --text-primary: #2d3436;
+    --text-secondary: #636e72;
+    --border-color: #dfe6e9;
+    --primary-color: #1e3799;
+}
+
+/* Stealth Mode Styles */
+body.stealth-mode .stealth-mask {
+    filter: blur(5px);
+    transition: filter 0.2s;
+}
+body.stealth-mode .stealth-mask:hover {
+    filter: blur(0);
+}
+
+/* Toggle Switch UI */
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--bg-surface-light);
+    transition: .4s;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-primary);
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .slider { background-color: var(--primary-color); }
+input:checked + .slider:before { transform: translateX(20px); }
 
 * {
     box-sizing: border-box;
