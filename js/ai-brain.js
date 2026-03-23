@@ -153,7 +153,7 @@ Output ONLY the bulleted list, no conversational filler.`;
                 },
                 body: JSON.stringify({
                     // Use stable version
-                    model: 'grok-2-vision-1212',
+                    model: 'grok-2-vision', // Stable alias
                     messages: [
                         { 
                             role: 'user', 
@@ -247,7 +247,7 @@ Cite the relevant section if possible.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-2-vision-1212',
+                    model: 'grok-2-vision', // Stable alias
                     messages: [
                         { 
                             role: 'user', 
@@ -295,7 +295,7 @@ Cite the relevant section if possible.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-2-vision-1212',
+                    model: 'grok-2-vision', // Stable alias
                     messages: [
                         { 
                             role: 'user', 
