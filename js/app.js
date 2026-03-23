@@ -6,8 +6,14 @@ const app = {
     currentScanPages: [],
     scannedImagesCount: 0,
     loadedPolicies: [],
+    settings: {
+        darkMode: true,
+        stealthMode: false,
+        hapticEnabled: false
+    },
 
     init() {
+        this.loadSettings();
         this.bindEvents();
         this.setupErrorHandlers();
         
@@ -110,6 +116,88 @@ const app = {
         
         this.currentView = viewId;
         window.location.hash = viewId;
+    },
+
+    loadSettings() {
+        const saved = localStorage.getItem('APP_SETTINGS');
+        if (saved) {
+            this.settings = JSON.parse(saved);
+        }
+        
+        // Apply initial settings
+        this.applyTheme(this.settings.darkMode);
+        this.applyStealth(this.settings.stealthMode);
+        
+        // Update UI toggles once DOM is ready (handled in navigate/init)
+        window.setTimeout(() => this.syncSettingsUI(), 100);
+    },
+
+    saveSettings() {
+        localStorage.setItem('APP_SETTINGS', JSON.stringify(this.settings));
+    },
+
+    syncSettingsUI() {
+        const darkToggle = document.getElementById('toggle-dark-mode');
+        const stealthToggle = document.getElementById('toggle-stealth-mode');
+        const hapticToggle = document.getElementById('toggle-haptic');
+        
+        if (darkToggle) darkToggle.checked = this.settings.darkMode;
+        if (stealthToggle) stealthToggle.checked = this.settings.stealthMode;
+        if (hapticToggle) hapticToggle.checked = this.settings.hapticEnabled;
+    },
+
+    toggleTheme(isDark) {
+        this.settings.darkMode = isDark;
+        this.applyTheme(isDark);
+        this.saveSettings();
+    },
+
+    applyTheme(isDark) {
+        if (isDark) {
+            document.body.classList.remove('light-theme');
+        } else {
+            document.body.classList.add('light-theme');
+        }
+    },
+
+    toggleStealth(isEnabled) {
+        this.settings.stealthMode = isEnabled;
+        this.applyStealth(isEnabled);
+        this.saveSettings();
+    },
+
+    applyStealth(isEnabled) {
+        if (isEnabled) {
+            document.body.classList.add('stealth-mode');
+        } else {
+            document.body.classList.remove('stealth-mode');
+        }
+    },
+
+    toggleHaptic(isEnabled) {
+        this.settings.hapticEnabled = isEnabled;
+        this.saveSettings();
+        if (isEnabled && navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+    },
+
+    hapticClick() {
+        if (this.settings.hapticEnabled && navigator.vibrate) {
+            navigator.vibrate(15);
+        }
+    },
+
+    checkForUpdate() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.update();
+                }
+            });
+        }
+        alert("Checking for updates and force-reloading...");
+        window.location.reload(true);
     },
 
     async loadData() {
