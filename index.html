@@ -115,6 +115,13 @@
                             <h3>Date of Loss</h3>
                             <p>Weather History</p>
                         </button>
+                        <button class="action-card" onclick="app.navigate('scan-estimate')" style="grid-column: span 1;">
+                            <div class="action-icon estimate-icon" style="background: #e91e63; color: white;">
+                                <span class="material-symbols-outlined">receipt_long</span>
+                            </div>
+                            <h3>Scan Estimate</h3>
+                            <p>Photo to Codes</p>
+                        </button>
                     </div>
 
                     <div class="dashboard-widgets">
@@ -303,13 +310,43 @@
                             </div>
                         </div>
                         
-                        <div class="voice-actions" style="margin-top:20px; display:flex; gap:10px; flex-direction:column;">
+                        <div class="voice-actions" style="margin-top: 15px;">
                             <button id="btn-brain-record" class="btn btn-primary btn-large" style="display:flex; align-items:center; justify-content:center; gap:8px;">
-                                <span class="material-symbols-outlined">mic</span> Start Listening
+                                <span class="material-symbols-outlined">mic</span> Voice Command
                             </button>
-                            <button id="btn-brain-submit" class="btn btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:8px;">
-                                <span class="material-symbols-outlined">send</span> Send Typed Command
+                            <button id="btn-brain-submit" class="btn btn-secondary" onclick="app.submitBrainCommand()">Send Text</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Scan Estimate View -->
+                <section id="view-scan-estimate" class="view">
+                    <div class="voice-container view-content">
+                        <h2>Scan Estimate</h2>
+                        <p class="subtitle">Convert contractor photos to Xactimate codes</p>
+                        
+                        <div style="margin-top: 20px; text-align: center;">
+                            <input type="file" id="estimate-file-input" accept="image/*" style="display: none;" onchange="app.handleEstimateImageSelect(event)">
+                            <button class="btn btn-primary btn-large" onclick="document.getElementById('estimate-file-input').click()" style="display:flex; align-items:center; justify-content:center; gap:8px; margin: 0 auto;">
+                                <span class="material-symbols-outlined">photo_camera</span> Take/Select Photo
                             </button>
+                            
+                            <div id="estimate-preview-container" class="hidden" style="margin-top: 20px;">
+                                <img id="estimate-preview-img" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <button id="btn-analyze-estimate" class="btn btn-success btn-block" style="margin-top: 15px;" onclick="app.analyzeEstimatePhoto()">
+                                    Analyze Estimate
+                                </button>
+                            </div>
+                            
+                            <div id="estimate-output-container" class="hidden" style="margin-top: 25px; text-align: left;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <h3 style="margin: 0; font-size: 1rem;">Generated Xactimate Codes</h3>
+                                    <button class="btn btn-secondary btn-small" onclick="app.copyEstimateToClipboard()" style="padding: 4px 8px; font-size: 0.75rem;">Copy All</button>
+                                </div>
+                                <div class="transcript-box">
+                                    <textarea id="estimate-transcript" readonly style="height: 250px; font-family: monospace; font-size: 0.85rem; line-height: 1.4;"></textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>

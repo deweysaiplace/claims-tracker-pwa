@@ -2,6 +2,7 @@ const app = {
     currentView: 'home',
     currentClaimId: null,
     currentVisionBase64: [], // Modified to array
+    currentEstimateBase64: null,
     currentScanPages: [],
     scannedImagesCount: 0,
     loadedPolicies: [],
@@ -617,6 +618,54 @@ const app = {
             console.error(e);
             alert("Error saving policy text: " + e.message);
         }
+    },
+
+    handleEstimateImageSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const previewContainer = document.getElementById('estimate-preview-container');
+        const previewImg = document.getElementById('estimate-preview-img');
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImg.src = e.target.result;
+            this.currentEstimateBase64 = e.target.result;
+            previewContainer.classList.remove('hidden');
+            document.getElementById('estimate-output-container').classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    },
+
+    async analyzeEstimatePhoto() {
+        if (!this.currentEstimateBase64) return alert("Please capture an estimate photo first.");
+        
+        const btn = document.getElementById('btn-analyze-estimate');
+        const outBox = document.getElementById('estimate-output-container');
+        const transcript = document.getElementById('estimate-transcript');
+        const origBtnText = btn.innerHTML;
+        
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Analyzing Estimate...';
+            btn.disabled = true;
+            
+            const result = await aiBrain.analyzeEstimate(this.currentEstimateBase64);
+            transcript.value = result;
+            outBox.classList.remove('hidden');
+        } catch(e) {
+            console.error(e);
+            alert("Error analyzing estimate. " + e.message);
+        } finally {
+            btn.innerHTML = origBtnText;
+            btn.disabled = false;
+        }
+    },
+
+    copyEstimateToClipboard() {
+        const transcript = document.getElementById('estimate-transcript');
+        transcript.select();
+        document.execCommand('copy');
+        alert("Xactimate codes copied to clipboard!");
     },
 
     async handleStealthPolicyUpload(event) {

@@ -276,5 +276,57 @@ Cite the relevant section if possible.`;
             console.error("OCR Error:", error);
             throw error;
         }
+    },
+
+    async analyzeEstimate(base64DataUrl) {
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("API Key required");
+
+        const base64Image = base64DataUrl.split(',')[1];
+        
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-2-vision-1212',
+                    messages: [
+                        { 
+                            role: 'user', 
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `You are an expert Xactimate estimator. Analyze this contractor's photo/capture of an estimate.
+Extract each line item and translate it into a valid or best-guess Xactimate category and code.
+
+Format your response as a clean, bulleted list:
+- [CAT] [CODE] [DESCRIPTION]
+
+Category examples: SFG (shingles), DRY (drywall), WTR (water extraction), PNT (painting), etc.
+Provide only the code list. If you are unsure of a code, provide the most likely industry standard for that material/labor. No conversational filler.`
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: {
+                                        url: `data:image/jpeg;base64,${base64Image}`
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    temperature: 0.2
+                })
+            });
+
+            if (!response.ok) throw new Error("Grok Estimate Analysis Error");
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (error) {
+            console.error("Estimate Analysis Error:", error);
+            throw error;
+        }
     }
 };
