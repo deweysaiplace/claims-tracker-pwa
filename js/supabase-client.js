@@ -4,12 +4,15 @@ const SUPABASE_URL = 'https://hmccsbyhubmgrxfamhfw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_b8AXhrbQDkVdfzz_p1ZiQw_koRnf7kG';
 
 // Initialize Supabase client
-let supabase;
+window.supabaseClient = null;
 try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } catch (e) {
     console.error("Supabase initialization failed. Likely a firewall issue.", e);
 }
+
+// Map the old variable name for compatibility in other files
+const supabase = window.supabaseClient;
 
 window.db = {
     // -------------------------------------------------------------------------

@@ -6,7 +6,7 @@ window.auth = {
         this.checkSession();
         
         // Listen to Auth State changes realtime
-        supabase.auth.onAuthStateChange((event, session) => {
+        window.supabaseClient.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN') {
                 this.handleLoginSuccess(session.user);
             } else if (event === 'SIGNED_OUT') {
@@ -32,7 +32,7 @@ window.auth = {
                 this.showError('');
                 
                 try {
-                    const { data, error } = await supabase.auth.signInWithPassword({
+                    const { data, error } = await window.supabaseClient.auth.signInWithPassword({
                         email,
                         password,
                     });
@@ -48,14 +48,14 @@ window.auth = {
         const logoutBtn = document.getElementById('btn-logout');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async () => {
-                await supabase.auth.signOut();
+                await window.supabaseClient.auth.signOut();
             });
         }
     },
 
     async checkSession() {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
             if (session) {
                 this.handleLoginSuccess(session.user);
             } else {
