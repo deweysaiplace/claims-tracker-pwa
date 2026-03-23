@@ -316,8 +316,8 @@
                         <!-- Feedback & Privacy Card -->
                         <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
                             <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Support & Privacy</h3>
-                            <button class="btn btn-secondary btn-block" onclick="app.sendFeedback()" style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom: 10px;">
-                                <span class="material-symbols-outlined">bug_report</span> Send Feedback
+                            <button class="btn btn-secondary btn-block" onclick="document.getElementById('modal-report-bug').classList.remove('hidden')" style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom: 10px;">
+                                <span class="material-symbols-outlined">bug_report</span> Report Issue / Feedback
                             </button>
                             <button class="btn btn-danger btn-block" onclick="app.wipeAllData()" style="display:flex; align-items:center; justify-content:center; gap:8px; background: #442222;">
                                 <span class="material-symbols-outlined">delete_forever</span> Wipe All Local Data
@@ -325,7 +325,7 @@
                         </div>
                         
                         <div style="margin-top: 30px; text-align: center; color: var(--text-secondary); font-size: 0.75rem;">
-                            App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.4.0</span><br>
+                            App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.5.0</span><br>
                             Engine: Grok-4.20 Flagship
                         </div>
                     </div>
