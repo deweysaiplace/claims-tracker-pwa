@@ -269,7 +269,10 @@ Cite the relevant section if possible.`;
                 })
             });
 
-            if (!response.ok) throw new Error("Grok OCR Error");
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error("Grok OCR Error: " + errText);
+            }
             const data = await response.json();
             return data.choices[0].message.content.trim();
         } catch (error) {
@@ -321,7 +324,10 @@ Provide only the code list. If you are unsure of a code, provide the most likely
                 })
             });
 
-            if (!response.ok) throw new Error("Grok Estimate Analysis Error");
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error("Grok Estimate Analysis Error: " + errText);
+            }
             const data = await response.json();
             return data.choices[0].message.content.trim();
         } catch (error) {
