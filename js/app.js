@@ -9,10 +9,23 @@ const app = {
 
     init() {
         this.bindEvents();
+        this.setupErrorHandlers();
         
         // Setup simple navigation
         const hash = window.location.hash.replace('#', '') || 'home';
         this.navigate(hash);
+    },
+
+    setupErrorHandlers() {
+        window.onerror = (message, source, lineno, colno, error) => {
+            const userId = auth.currentUser ? auth.currentUser.id : null;
+            db.logError(userId, message, error ? error.stack : `At ${source}:${lineno}`, this.currentView, "v1.4.1");
+        };
+
+        window.onunhandledrejection = (event) => {
+            const userId = auth.currentUser ? auth.currentUser.id : null;
+            db.logError(userId, "Unhandled Promise Rejection: " + event.reason, null, this.currentView, "v1.4.1");
+        };
     },
 
     bindEvents() {

@@ -86,3 +86,20 @@ ALTER TABLE public.policies ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only view their own policies" ON public.policies FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can only insert their own policies" ON public.policies FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can only delete their own policies" ON public.policies FOR DELETE USING (auth.uid() = user_id);
+
+-- 6. Create Error Logs Table
+CREATE TABLE public.error_logs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users,
+    message TEXT NOT NULL,
+    stack TEXT,
+    view_id TEXT,
+    app_version TEXT,
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS for Error Logs
+ALTER TABLE public.error_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can insert their own error logs" ON public.error_logs FOR INSERT WITH CHECK (auth.uid() = user_id OR auth.uid() IS NULL);
+CREATE POLICY "Users can only view their own error logs" ON public.error_logs FOR SELECT USING (auth.uid() = user_id);

@@ -168,5 +168,27 @@ window.db = {
             return [];
         }
         return data;
+    },
+
+    // -------------------------------------------------------------------------
+    // Error Logs
+    // -------------------------------------------------------------------------
+    async logError(userId, message, stack, viewId, appVersion) {
+        try {
+            const { data, error } = await supabase
+                .from('error_logs')
+                .insert([{
+                    user_id: userId,
+                    message: message,
+                    stack: stack,
+                    view_id: viewId,
+                    app_version: appVersion,
+                    user_agent: navigator.userAgent
+                }]);
+            if (error) console.error("Failed to log error to DB:", error);
+            return data;
+        } catch (e) {
+            console.error("Critical failure in logError:", e);
+        }
     }
 };

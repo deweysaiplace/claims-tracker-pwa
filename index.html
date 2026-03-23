@@ -569,6 +569,25 @@
             </div>
         </div>
     </div>
+
+    <!-- Report Bug / Feedback Modal -->
+    <div id="modal-report-bug" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Report Issue / Feedback</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 15px;">
+                    Describe what went wrong or what you'd like to see improved. The AI will see your technical logs automatically.
+                </p>
+                <div class="input-group">
+                    <textarea id="bug-description" placeholder="E.g. The Scan Estimate button didn't work after I took a photo..." style="height: 120px;"></textarea>
+                </div>
+                <button id="btn-submit-bug" class="btn btn-primary btn-block" onclick="app.submitBugReport()">Submit Report</button>
+            </div>
+        </div>
+    </div>
     
     <!-- Scripts -->
     <script src="js/supabase-client.js?v=11"></script>
