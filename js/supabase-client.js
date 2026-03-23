@@ -6,20 +6,29 @@ const SUPABASE_ANON_KEY = 'sb_publishable_b8AXhrbQDkVdfzz_p1ZiQw_koRnf7kG';
 // Initialize Supabase client
 window.supabaseClient = null;
 try {
-    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    if (window.supabase) {
+        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+        console.error("Supabase library not found in window object.");
+    }
 } catch (e) {
-    console.error("Supabase initialization failed. Likely a firewall issue.", e);
+    console.error("Supabase initialization failed:", e);
 }
 
-// Map the old variable name for compatibility in other files
-const supabase = window.supabaseClient;
-
+// Global DB object
 window.db = {
+    _getClient() {
+        if (!window.supabaseClient) {
+            throw new Error("Database client not initialized. Check your network or API key.");
+        }
+        return window.supabaseClient;
+    },
+
     // -------------------------------------------------------------------------
     // Claims
     // -------------------------------------------------------------------------
     async getActiveClaims(userId) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('claims')
             .select('*')
             .eq('user_id', userId)
@@ -33,7 +42,7 @@ window.db = {
     },
 
     async getAllClaims(userId) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('claims')
             .select('*')
             .eq('user_id', userId)
@@ -46,7 +55,7 @@ window.db = {
     },
 
     async addClaim(userId, claimNumber, insuredName, insuredPhone) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('claims')
             .insert([{
                 user_id: userId,
@@ -63,7 +72,7 @@ window.db = {
     // Tasks
     // -------------------------------------------------------------------------
     async getTasks(userId) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('tasks')
             .select(`
                 *,
@@ -81,7 +90,7 @@ window.db = {
     },
 
     async addTask(userId, description, claimId = null, priority = 'Normal') {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('tasks')
             .insert([{
                 user_id: userId,
@@ -95,7 +104,7 @@ window.db = {
     },
 
     async completeTask(taskId) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('tasks')
             .update({ 
                 status: 'Completed',
@@ -107,7 +116,7 @@ window.db = {
     },
 
     async deleteTask(taskId) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('tasks')
             .delete()
             .eq('id', taskId);
@@ -119,7 +128,7 @@ window.db = {
     // Voicemails & Summaries
     // -------------------------------------------------------------------------
     async saveVoicemail(userId, transcript, claimId = null) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('voicemails')
             .insert([{
                 user_id: userId,
@@ -131,7 +140,7 @@ window.db = {
     },
 
     async saveInspectionSummary(userId, transcript, claimId = null) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('inspection_summaries')
             .insert([{
                 user_id: userId,
@@ -146,7 +155,7 @@ window.db = {
     // Policies (Cross-Device Sync)
     // -------------------------------------------------------------------------
     async savePolicy(userId, policyName, policyText) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('policies')
             .insert([{
                 user_id: userId,
@@ -158,7 +167,7 @@ window.db = {
     },
 
     async getPolicies(userId) {
-        const { data, error } = await supabase
+        const { data, error } = await this._getClient()
             .from('policies')
             .select('id, policy_name, policy_text, created_at')
             .eq('user_id', userId)
@@ -175,7 +184,8 @@ window.db = {
     // -------------------------------------------------------------------------
     async logError(userId, message, stack, viewId, appVersion) {
         try {
-            const { data, error } = await supabase
+            if (!window.supabaseClient) return; // Silent fail if no DB
+            const { data, error } = await window.supabaseClient
                 .from('error_logs')
                 .insert([{
                     user_id: userId,
