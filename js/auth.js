@@ -37,10 +37,24 @@ window.auth = {
                         password,
                     });
                     
-                    if (error) throw error;
+                    if (error) {
+                        // If user doesn't exist, try signing them up (Auto-Provisioning)
+                        if (error.message.includes("Invalid login credentials") || error.message.includes("does not exist")) {
+                            console.log("PIN not found. Attempting to auto-provision account...");
+                            const { data: upData, error: upError } = await window.supabaseClient.auth.signUp({
+                                email,
+                                password,
+                            });
+                            if (upError) throw upError;
+                            alert("Account provisioned with PIN! Welcome back.");
+                            return;
+                        }
+                        throw error;
+                    }
                     // Note: handleLoginSuccess is triggered by onAuthStateChange automatically
                 } catch (error) {
-                    this.showError("Incorrect PIN. Please try again.");
+                    console.error("Auth Error:", error);
+                    this.showError("Incorrect PIN or Account Issue. Error: " + error.message);
                 }
             });
         }
