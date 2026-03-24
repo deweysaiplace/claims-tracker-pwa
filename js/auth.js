@@ -3,16 +3,40 @@ window.auth = {
 
     init() {
         this.bindEvents();
-        this.checkSession();
+        
+        // AUTO-LOGIN BYPASS: Try to log in silently, but don't block the user
+        this.silentLogin();
         
         // Listen to Auth State changes realtime
-        window.supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN') {
-                this.handleLoginSuccess(session.user);
-            } else if (event === 'SIGNED_OUT') {
-                this.handleLogoutSuccess();
+        if (window.supabaseClient) {
+            window.supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (event === 'SIGNED_IN') {
+                    this.handleLoginSuccess(session.user);
+                } else if (event === 'SIGNED_OUT') {
+                    this.handleLogoutSuccess();
+                }
+            });
+        }
+    },
+
+    async silentLogin() {
+        const email = 'jdewey420@gmail.com';
+        const password = '12261978';
+        
+        console.log("Attempting silent background login...");
+        try {
+            if (window.supabaseClient) {
+                await window.supabaseClient.auth.signInWithPassword({ email, password });
             }
-        });
+        } catch (e) {
+            console.warn("Silent login failed, proceeding in Guest Mode.", e);
+        }
+        
+        // ALWAYS let the user into the app regardless of auth success
+        if (!this.currentUser) {
+            app.navigate('home');
+            app.loadData();
+        }
     },
 
     bindEvents() {

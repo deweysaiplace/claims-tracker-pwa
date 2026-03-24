@@ -32,8 +32,8 @@
 <body>
     <!-- App Shell -->
     <div id="app" class="app-container">
-        <!-- Auth Screen -->
-        <div id="auth-screen" class="view active-view">
+        <!-- Auth Screen (Now hidden by default for bypass) -->
+        <div id="auth-screen" class="view">
             <div class="auth-container">
                 <div class="auth-card" style="text-align: center; max-width: 320px; width: 100%; padding: 20px; background: var(--bg-surface); border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
                     <div style="font-size: 3rem; margin-bottom: 20px;">🛡️</div>
@@ -63,8 +63,8 @@
             </div>
         </div>
 
-        <!-- Main App Content (Hidden until auth) -->
-        <div id="main-app" class="hidden">
+        <!-- Main App Content (Always visible now) -->
+        <div id="main-app" class="">
             <!-- Header -->
             <header class="app-header">
                 <div class="header-title">
@@ -337,7 +337,7 @@
                         </div>
                         
                         <div style="margin-top: 30px; text-align: center; color: var(--text-secondary); font-size: 0.75rem;">
-                            App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.5.0</span><br>
+                            App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.6.0 (Bypass Mode)</span><br>
                             Engine: Grok-4.20 Flagship
                         </div>
                     </div>
@@ -635,11 +635,11 @@
     </div>
     
     <!-- Scripts -->
-    <script src="js/supabase-client.js?v=17"></script>
-    <script src="js/auth.js?v=17"></script>
-    <script src="js/voice.js?v=17"></script>
-    <script src="js/ai-brain.js?v=17"></script>
-    <script src="js/app.js?v=17"></script>
+    <script src="js/supabase-client.js?v=20"></script>
+    <script src="js/auth.js?v=20"></script>
+    <script src="js/voice.js?v=20"></script>
+    <script src="js/ai-brain.js?v=20"></script>
+    <script src="js/app.js?v=20"></script>
     
     <!-- Register Service Worker -->
     <script>

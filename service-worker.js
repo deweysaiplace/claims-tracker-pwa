@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claims-tracker-v17';
+const CACHE_NAME = 'claims-tracker-v20';
 const urlsToCache = [
   '/',
   '/index.html',
