@@ -23,7 +23,7 @@ window.auth = {
                 const pin = document.getElementById('pin').value;
                 
                 // We use a dummy email because you requested a PIN-only workflow
-                const email = 'jason@claims.com'; 
+                const email = 'jdewey420@gmail.com'; 
                 
                 // Use the exact 8-digit PIN you provide (e.g. 12261978) as the password
                 const password = pin;
