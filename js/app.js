@@ -16,10 +16,35 @@ const app = {
         this.loadSettings();
         this.bindEvents();
         this.setupErrorHandlers();
+        this.updateDBStatus();
         
         // Setup simple navigation
         const hash = window.location.hash.replace('#', '') || 'home';
         this.navigate(hash);
+    },
+
+    updateDBStatus() {
+        const el = document.getElementById('db-status');
+        if (!el) return;
+        if (window.supabaseClient) {
+            el.textContent = "✅ Secure connection established.";
+            el.style.color = "var(--success-color)";
+        } else {
+            el.textContent = "❌ Connection failed. Check your network.";
+            el.style.color = "var(--danger-color)";
+        }
+    },
+
+    hardRefresh() {
+        if (confirm("This will clear all temporary app cache and force an update. Your claim data in the database will NOT be affected. Proceed?")) {
+            // Clear all site data
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    for(let registration of registrations) { registration.unregister(); }
+                });
+            }
+            window.location.reload(true);
+        }
     },
 
     setupErrorHandlers() {
