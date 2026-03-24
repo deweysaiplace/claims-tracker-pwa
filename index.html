@@ -33,21 +33,33 @@
     <!-- App Shell -->
     <div id="app" class="app-container">
         <!-- Auth Screen -->
-        <div id="auth-screen" class="view active">
+        <div id="auth-screen" class="view active-view">
             <div class="auth-container">
-                <div class="auth-logo">
-                    <span class="material-symbols-outlined logo-icon">shield_person</span>
-                    <h1>Claims Tracker</h1>
-                </div>
-                <p class="auth-subtitle">Secure access only</p>
-                <form id="login-form">
-                    <div class="input-group" style="text-align: center;">
-                        <label for="pin">Enter your 8-Digit PIN</label>
-                        <input type="password" id="pin" required maxlength="8" pattern="[0-9]*" inputmode="numeric" style="font-size: 2rem; text-align: center; letter-spacing: 0.2em;">
+                <div class="auth-card" style="text-align: center; max-width: 320px; width: 100%; padding: 20px; background: var(--bg-surface); border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">🛡️</div>
+                    <h2 style="margin-bottom: 5px;">Claims Tracker</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.9rem;">App Version v1.5.1</p>
+                    
+                    <form id="login-form">
+                        <div class="input-group" style="text-align: center;">
+                            <label for="pin" style="display: block; margin-bottom: 10px;">Enter 8-Digit Secure PIN</label>
+                            <input type="password" id="pin" required maxlength="12" pattern="[0-9]*" inputmode="numeric" placeholder="••••••••" style="font-size: 1.8rem; text-align: center; letter-spacing: 0.2em; width: 100%; background: var(--bg-surface-light); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; padding: 10px;">
+                        </div>
+                        <p id="auth-error" style="color: var(--danger-color); font-size: 0.85rem; margin-top: 10px; margin-bottom: 15px; min-height: 1.2em;"></p>
+                        
+                        <p id="db-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 20px; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.2);">
+                            🛰️ Checking secure link...
+                        </p>
+                        
+                        <button type="submit" class="btn btn-primary btn-block btn-large" style="width: 100%; padding: 15px; font-weight: bold;">UNLOCK APP</button>
+                    </form>
+
+                    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed var(--border-color);">
+                        <button onclick="app.hardRefresh()" style="background: none; border: none; color: var(--text-secondary); font-size: 0.75rem; text-decoration: underline; cursor: pointer; opacity: 0.7;">
+                            Stuck? Clear All Cache & Refresh
+                        </button>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-block">Unlock App</button>
-                    <div id="auth-error" class="error-message hidden" style="margin-top: 15px; color: var(--danger-color); text-align: center;"></div>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -623,11 +635,11 @@
     </div>
     
     <!-- Scripts -->
-    <script src="js/supabase-client.js?v=15"></script>
-    <script src="js/auth.js?v=15"></script>
-    <script src="js/voice.js?v=15"></script>
-    <script src="js/ai-brain.js?v=15"></script>
-    <script src="js/app.js?v=15"></script>
+    <script src="js/supabase-client.js?v=16"></script>
+    <script src="js/auth.js?v=16"></script>
+    <script src="js/voice.js?v=16"></script>
+    <script src="js/ai-brain.js?v=16"></script>
+    <script src="js/app.js?v=16"></script>
     
     <!-- Register Service Worker -->
     <script>
