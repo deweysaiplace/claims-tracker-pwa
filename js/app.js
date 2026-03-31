@@ -137,10 +137,137 @@ const app = {
             if (apiKeyInput) {
                 apiKeyInput.value = localStorage.getItem('GROK_API_KEY') || '';
             }
+            this.generateAppQRCode();
+        }
+        
+        if (viewId === 'material-id') {
+            this.resetMaterialID();
         }
         
         this.currentView = viewId;
         window.location.hash = viewId;
+    },
+
+    generateAppQRCode() {
+        const qrImg = document.getElementById('app-qr-code');
+        const urlDisplay = document.getElementById('app-url-display');
+        if (!qrImg || !urlDisplay) return;
+
+        const currentUrl = window.location.href.split('#')[0]; // Current base URL
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}&margin=10&color=1a1a2e`;
+        
+        qrImg.src = qrUrl;
+        urlDisplay.textContent = currentUrl;
+    },
+
+    // -------------------------------------------------------------------------
+    // Material ID Logic
+    // -------------------------------------------------------------------------
+    resetMaterialID() {
+        this.currentMaterialBase64 = null;
+        const preview = document.getElementById('material-photo-preview');
+        const placeholder = document.querySelector('#material-camera-container .camera-placeholder');
+        const analyzeBtn = document.getElementById('btn-analyze-material');
+        const results = document.getElementById('material-results');
+        const availSection = document.getElementById('availability-section');
+
+        if (preview) preview.classList.add('hidden');
+        if (placeholder) placeholder.classList.remove('hidden');
+        if (analyzeBtn) analyzeBtn.classList.add('hidden');
+        if (results) results.classList.add('hidden');
+        if (availSection) availSection.classList.add('hidden');
+    },
+
+    handleMaterialPhoto(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result;
+            this.currentMaterialBase64 = base64;
+            
+            const preview = document.getElementById('material-photo-preview');
+            preview.src = base64;
+            preview.classList.remove('hidden');
+            
+            const placeholder = document.querySelector('#material-camera-container .camera-placeholder');
+            if (placeholder) placeholder.classList.add('hidden');
+            
+            document.getElementById('btn-analyze-material').classList.remove('hidden');
+            document.getElementById('material-results').classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    },
+
+    async analyzeMaterial() {
+        if (!this.currentMaterialBase64) return;
+
+        const loading = document.getElementById('material-loading');
+        const loadingText = document.getElementById('material-loading-text');
+        const results = document.getElementById('material-results');
+        const info = document.getElementById('material-info');
+
+        if (loading) loading.classList.remove('hidden');
+        if (loadingText) loadingText.textContent = "Analyzing material profile...";
+        if (results) results.classList.add('hidden');
+
+        try {
+            const data = await aiBrain.identifyMaterial(this.currentMaterialBase64);
+            
+            if (data) {
+                this.currentMaterialData = data;
+                info.innerHTML = `
+                    <p><span class="material-label">Category:</span> ${data.category || 'Unknown'}</p>
+                    <p><span class="material-label">Material:</span> ${data.material || 'Unknown'}</p>
+                    <p><span class="material-label">Profile:</span> ${data.profile || 'Unknown'}</p>
+                    <p><span class="material-label">Texture:</span> ${data.texture || 'Unknown'}</p>
+                    <p><span class="material-label">Color:</span> ${data.color || 'Unknown'}</p>
+                    <p style="margin-top: 10px; font-weight: 500; color: var(--primary-color);">Suggested Xactimate Code: ${data.xactimate_code || 'N/A'}</p>
+                `;
+                results.classList.remove('hidden');
+            } else {
+                alert("Could not identify material. Try a clearer photo.");
+            }
+        } catch (error) {
+            console.error("Material ID analysis error:", error);
+            alert("Error analyzing material. Please check your connection and API key.");
+        } finally {
+            if (loading) loading.classList.add('hidden');
+        }
+    },
+
+    async checkAvailability() {
+        if (!this.currentMaterialData) return;
+
+        const loading = document.getElementById('material-loading');
+        const loadingText = document.getElementById('material-loading-text');
+        const availSection = document.getElementById('availability-section');
+        const availStatus = document.getElementById('availability-status');
+
+        if (loading) loading.classList.remove('hidden');
+        if (loadingText) loadingText.textContent = "Checking discontinued status...";
+
+        try {
+            const description = `${this.currentMaterialData.material} ${this.currentMaterialData.profile} ${this.currentMaterialData.color}`;
+            const summary = await aiBrain.checkDiscontinued(description);
+            
+            availStatus.innerHTML = summary;
+            
+            // Add visual cue if discontinued
+            if (summary.toLowerCase().includes('discontinued') || summary.toLowerCase().includes('obsolete')) {
+                availStatus.className = 'availability-status discontinued';
+            } else {
+                availStatus.className = 'availability-status available';
+            }
+            
+            availSection.classList.remove('hidden');
+        } catch (error) {
+            console.error("Availability check error:", error);
+            alert("Error checking availability.");
+        } finally {
+            if (loading) loading.classList.add('hidden');
+        }
     },
 
     loadSettings() {
@@ -1011,6 +1138,125 @@ const app = {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    },
+
+    // -------------------------------------------------------------------------
+    // Material ID Logic
+    // -------------------------------------------------------------------------
+    resetMaterialID() {
+        this.currentMaterialBase64 = null;
+        const preview = document.getElementById('material-photo-preview');
+        const placeholder = document.querySelector('#material-camera-container .camera-placeholder');
+        const analyzeBtn = document.getElementById('btn-analyze-material');
+        const results = document.getElementById('material-results');
+        const availSection = document.getElementById('availability-section');
+
+        if (preview) preview.classList.add('hidden');
+        if (placeholder) placeholder.classList.remove('hidden');
+        if (analyzeBtn) analyzeBtn.classList.add('hidden');
+        if (results) results.classList.add('hidden');
+        if (availSection) availSection.classList.add('hidden');
+    },
+
+    handleMaterialPhoto(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result;
+            this.currentMaterialBase64 = base64;
+            
+            const preview = document.getElementById('material-photo-preview');
+            if (preview) {
+                preview.src = base64;
+                preview.classList.remove('hidden');
+            }
+            
+            const placeholder = document.querySelector('#material-camera-container .camera-placeholder');
+            if (placeholder) placeholder.classList.add('hidden');
+            
+            const analyzeBtn = document.getElementById('btn-analyze-material');
+            if (analyzeBtn) analyzeBtn.classList.remove('hidden');
+            
+            const results = document.getElementById('material-results');
+            if (results) results.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    },
+
+    async analyzeMaterial() {
+        if (!this.currentMaterialBase64) return;
+
+        const loading = document.getElementById('material-loading');
+        const loadingText = document.getElementById('material-loading-text');
+        const results = document.getElementById('material-results');
+        const info = document.getElementById('material-info');
+
+        if (loading) loading.classList.remove('hidden');
+        if (loadingText) loadingText.textContent = "Analyzing material profile...";
+        if (results) results.classList.add('hidden');
+
+        try {
+            const data = await aiBrain.identifyMaterial(this.currentMaterialBase64);
+            
+            if (data) {
+                this.currentMaterialData = data;
+                if (info) {
+                    info.innerHTML = `
+                        <p><span class="material-label">Category:</span> ${data.category || 'Unknown'}</p>
+                        <p><span class="material-label">Material:</span> ${data.material || 'Unknown'}</p>
+                        <p><span class="material-label">Profile:</span> ${data.profile || 'Unknown'}</p>
+                        <p><span class="material-label">Texture:</span> ${data.texture || 'Unknown'}</p>
+                        <p><span class="material-label">Color:</span> ${data.color || 'Unknown'}</p>
+                        <p style="margin-top: 10px; font-weight: 500; color: var(--primary-color);">Suggested Xactimate Code: ${data.xactimate_code || 'N/A'}</p>
+                    `;
+                }
+                if (results) results.classList.remove('hidden');
+            } else {
+                alert("Could not identify material. Try a clearer photo.");
+            }
+        } catch (error) {
+            console.error("Material ID analysis error:", error);
+            alert("Error analyzing material. Please check your connection and API key.");
+        } finally {
+            if (loading) loading.classList.add('hidden');
+        }
+    },
+
+    async checkAvailability() {
+        if (!this.currentMaterialData) return;
+
+        const loading = document.getElementById('material-loading');
+        const loadingText = document.getElementById('material-loading-text');
+        const availSection = document.getElementById('availability-section');
+        const availStatus = document.getElementById('availability-status');
+
+        if (loading) loading.classList.remove('hidden');
+        if (loadingText) loadingText.textContent = "Checking discontinued status...";
+
+        try {
+            const description = `${this.currentMaterialData.material} ${this.currentMaterialData.profile} ${this.currentMaterialData.color}`;
+            const summary = await aiBrain.checkDiscontinued(description);
+            
+            if (availStatus) {
+                availStatus.innerHTML = summary;
+                
+                // Add visual cue if discontinued
+                if (summary.toLowerCase().includes('discontinued') || summary.toLowerCase().includes('obsolete')) {
+                    availStatus.className = 'availability-status discontinued';
+                } else {
+                    availStatus.className = 'availability-status available';
+                }
+            }
+            
+            if (availSection) availSection.classList.remove('hidden');
+        } catch (error) {
+            console.error("Availability check error:", error);
+            alert("Error checking availability.");
+        } finally {
+            if (loading) loading.classList.add('hidden');
+        }
     }
 };
 

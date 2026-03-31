@@ -431,3 +431,54 @@ body {
 }
 
 .transcript-box.large textarea { height: 300px; }
+
+/* Material ID Styles */
+.material-info {
+    margin-top: 10px;
+    line-height: 1.6;
+    text-align: left;
+}
+
+.material-info p {
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.material-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: inline-block;
+    width: 100px;
+}
+
+.availability-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--border-color);
+    text-align: left;
+}
+
+.availability-section h4 {
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+.availability-status {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    background: var(--bg-surface-light);
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 4px solid var(--info-color);
+}
+
+.availability-status.discontinued {
+    border-left-color: var(--danger-color);
+    background: rgba(244, 67, 54, 0.1);
+}
+
+.availability-status.available {
+    border-left-color: var(--success-color);
+    background: rgba(76, 175, 80, 0.1);
+}
