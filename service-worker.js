@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claims-tracker-v1.7.0';
+const CACHE_NAME = 'claims-tracker-v1.7.5';
 const ASSETS = [
   './',
   './index.html',

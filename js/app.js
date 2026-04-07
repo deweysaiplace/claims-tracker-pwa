@@ -68,12 +68,12 @@ const app = {
     setupErrorHandlers() {
         window.onerror = (message, source, lineno, colno, error) => {
             const userId = auth.currentUser ? auth.currentUser.id : null;
-            db.logError(userId, message, error ? error.stack : `At ${source}:${lineno}`, this.currentView, "v1.6.0");
+            db.logError(userId, message, error ? error.stack : `At ${source}:${lineno}`, this.currentView, "v1.7.5");
         };
 
         window.onunhandledrejection = (event) => {
             const userId = auth.currentUser ? auth.currentUser.id : null;
-            db.logError(userId, "Unhandled Promise Rejection: " + event.reason, null, this.currentView, "v1.6.0");
+            db.logError(userId, "Unhandled Promise Rejection: " + event.reason, null, this.currentView, "v1.7.5");
         };
     },
 
