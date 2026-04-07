@@ -161,13 +161,7 @@
                             <p>AI Code Search</p>
                         </button>
 
-                        <button class="action-card" onclick="document.getElementById('modal-signature').classList.remove('hidden')" style="grid-column: span 2;">
-                            <div class="action-icon sign-icon" style="background: #4caf50; color: white;">
-                                <span class="material-symbols-outlined">draw</span>
-                            </div>
-                            <h3>Field Authorization</h3>
-                            <p>Digital Signature Capture</p>
-                        </button>
+
                     </div>
 
                     <div class="dashboard-widgets">
@@ -794,27 +788,7 @@
         </div>
     </div>
 
-    <!-- Signature Pad Modal -->
-    <div id="modal-signature" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Capture Authorization</h3>
-                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
-            </div>
-            <div class="modal-body">
-                <p style="color: var(--text-secondary); font-size: 0.85rem;">Please sign within the box below for <strong>Authorization to Inspect</strong>.</p>
-                
-                <div class="signature-container">
-                    <canvas id="signature-pad"></canvas>
-                </div>
-                
-                <div class="signature-actions">
-                    <button class="btn btn-secondary" onclick="app.clearSignature()">Clear</button>
-                    <button class="btn btn-primary btn-block" onclick="app.saveSignature()">Confirm Signature</button>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Report Bug / Feedback Modal -->
     <div id="modal-report-bug" class="modal hidden">

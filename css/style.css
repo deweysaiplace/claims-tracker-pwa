@@ -546,26 +546,7 @@ body {
     border: 1px solid rgba(0, 122, 255, 0.3);
 }
 
-/* Signature Pad */
-.signature-container {
-    width: 100%;
-    background: #FFFFFF;
-    border-radius: 8px;
-    border: 2px dashed var(--border-color);
-    position: relative;
-    margin: 15px 0;
-    touch-action: none;
-}
-#signature-pad {
-    width: 100%;
-    height: 180px;
-    display: block;
-}
-.signature-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-}
+
 
 /* Dictionary View */
 .dictionary-search {

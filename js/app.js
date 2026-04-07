@@ -23,7 +23,7 @@ const app = {
         this.navigate(hash);
 
         this.setupOfflineDetection();
-        this.initSignaturePad();
+
     },
 
     setupOfflineDetection() {
@@ -1555,73 +1555,7 @@ const app = {
         }
     },
 
-    // --- SIGNATURE PAD --- //
-    
-    initSignaturePad() {
-        const canvas = document.getElementById('signature-pad');
-        if (!canvas) return;
-        
-        // Resize canvas to its container
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio;
-        canvas.height = canvas.offsetHeight * ratio;
-        canvas.getContext("2d").scale(ratio, ratio);
 
-        this.signatureCtx = canvas.getContext('2d');
-        this.signatureCtx.strokeStyle = "#222";
-        this.signatureCtx.lineWidth = 2;
-        this.isDrawing = false;
-
-        const startDrawing = (e) => {
-            this.isDrawing = true;
-            const pos = this.getCanvasPos(e);
-            this.signatureCtx.beginPath();
-            this.signatureCtx.moveTo(pos.x, pos.y);
-        };
-
-        const draw = (e) => {
-            if (!this.isDrawing) return;
-            const pos = this.getCanvasPos(e);
-            this.signatureCtx.lineTo(pos.x, pos.y);
-            this.signatureCtx.stroke();
-            e.preventDefault();
-        };
-
-        const stopDrawing = () => {
-            this.isDrawing = false;
-        };
-
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', stopDrawing);
-    },
-
-    getCanvasPos(e) {
-        const canvas = document.getElementById('signature-pad');
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return {
-            x: clientX - rect.left,
-            y: clientY - rect.top
-        };
-    },
-
-    clearSignature() {
-        const canvas = document.getElementById('signature-pad');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    },
-
-    saveSignature() {
-        const canvas = document.getElementById('signature-pad');
-        const dataUrl = canvas.toDataURL();
-        alert("Signature captured as DataURL. Saving to claim files...");
-        document.getElementById('modal-signature').classList.add('hidden');
-    },
 
     copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
