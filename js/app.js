@@ -1559,8 +1559,72 @@ const app = {
 
     copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
-            alert(`Copied: ${text}`);
+            this.showToast(`Copied: ${text}`, 'success');
         });
+    },
+
+    showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        let icon = 'info';
+        if (type === 'success') icon = 'check_circle';
+        if (type === 'error') icon = 'error';
+
+        toast.innerHTML = `
+            <span class="material-symbols-outlined">${icon}</span>
+            <span>${message}</span>
+        `;
+
+        container.appendChild(toast);
+
+        // Auto remove
+        setTimeout(() => {
+            toast.style.animation = 'toastFadeOut 0.3s ease-in forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    },
+
+    async submitBugReport() {
+        const descInput = document.getElementById('bug-description');
+        const description = descInput.value.trim();
+        const btn = document.getElementById('btn-submit-bug');
+
+        if (!description) {
+            this.showToast("Please describe the issue.", "error");
+            return;
+        }
+
+        const origBtnText = btn.innerHTML;
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Sending...';
+            btn.disabled = true;
+
+            const userId = auth.currentUser ? auth.currentUser.id : null;
+            const context = {
+                view: this.currentView,
+                claimId: this.currentClaimId,
+                userAgent: navigator.userAgent,
+                online: navigator.onLine,
+                timestamp: new Date().toISOString()
+            };
+
+            // Log as a special error type for now
+            await db.logError(userId, "USER_FEEDBACK: " + description, JSON.stringify(context), this.currentView, "v1.7.7");
+
+            this.showToast("Thank you! Feedback sent.", "success");
+            descInput.value = '';
+            document.getElementById('modal-report-bug').classList.add('hidden');
+        } catch (e) {
+            console.error(e);
+            this.showToast("Failed to send report.", "error");
+        } finally {
+            btn.innerHTML = origBtnText;
+            btn.disabled = false;
+        }
     }
 };
 

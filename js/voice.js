@@ -1,4 +1,4 @@
-const voiceModule = {
+window.voiceModule = {
     recognition: null,
     isRecording: false,
     finalTranscript: '',
@@ -108,6 +108,10 @@ const voiceModule = {
 
     startRecording() {
         if (this.recognition && !this.isRecording) {
+            // Haptic Feedback
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(50); // Short pulse
+            }
             this.finalTranscript = document.getElementById(this.targetElementId)?.value || '';
             this.recognition.start();
         }
@@ -115,6 +119,10 @@ const voiceModule = {
 
     stopRecording() {
         if (this.recognition && this.isRecording) {
+            // Haptic Feedback
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate([30, 30]); // Double pulse tap
+            }
             this.recognition.stop();
         }
     },
