@@ -442,5 +442,249 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
             console.error("Availability Error:", error);
             throw error;
         }
+    },
+
+    async processWindshieldBrainDump(transcriptionText) {
+        if (!transcriptionText) return null;
+
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("API Key required");
+
+        const prompt = `You are a professional claims adjuster's AI assistant. 
+    Analyze this "windshield time brain dump" dictated while driving.
+    Categorize the actionable items into a strict JSON format with these exact keys:
+    1. "tasks": Array of objects { "claimName": "Name/ID", "description": "task detail", "priority": 1-3 }
+    2. "emails": Array of objects { "recipient": "Name or relation", "content": "Brief email summary to draft" }
+    3. "sms": Array of objects { "recipient": "Name or relation", "content": "Brief text message to draft" }
+    4. "notes": Array of strings (general thoughts or intel not tied to specific actions)
+    
+    Transcript: "${transcriptionText}"
+    
+    Return ONLY JSON. Do not include markdown formatting block.`;
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-4.20',
+                    messages: [
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) throw new Error("Grok Brain Dump Error");
+            const data = await response.json();
+            const result = data.choices[0].message.content.trim();
+            const cleaned = result ? result.replace(/```json|```/g, '').trim() : "{}";
+            return JSON.parse(cleaned);
+        } catch (error) {
+            console.error("Error parsing Brain Dump:", error);
+            return { tasks: [], emails: [], sms: [], notes: [] };
+        }
+    },
+
+    async findNearbyPOIs(lat, lng) {
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("API Key required");
+
+        let area = "this location";
+        try {
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const geoData = await geoRes.json();
+            const address = geoData.address;
+            area = address.city || address.town || address.county || address.state || "this location";
+        } catch (e) { console.warn("Reverse geocoding failed", e); }
+
+        const prompt = `You are a local architectural and historical tour guide for ${area}. 
+        Identify 10-15 highly notable Points of Interest within a 50-mile radius of latitude ${lat}, longitude ${lng}.
+        Categories to focus on: American History, Architectural Sites, Famous/Historic Diners, and Major Landmarks.
+        Provide approximate, but highly accurate, latitude and longitude coordinates for each location so they can be plotted on a map.
+        
+        Return STRICTLY in JSON format:
+        {
+          "pois": [
+            { "name": "Name of Place", "category": "Category", "description": "1-2 sentence compelling hook", "lat": 0.0, "lng": 0.0 }
+          ]
+        }`;
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-4.20',
+                    messages: [ { role: 'user', content: prompt } ],
+                    temperature: 0.2
+                })
+            });
+
+            if (!response.ok) throw new Error("Grok POI Error");
+            const data = await response.json();
+            const result = data.choices[0].message.content.trim();
+            const cleaned = result ? result.replace(/```json|```/g, '').trim() : "{}";
+            return JSON.parse(cleaned).pois || [];
+        } catch (error) {
+            console.error("Error finding POIs:", error);
+            return [];
+        }
+    },
+
+    async analyzeALEPhoto(base64DataUrl) {
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("API Key required");
+
+        const base64Image = base64DataUrl.split(',')[1];
+        if (!base64Image) throw new Error("Invalid image format");
+
+        const prompt = `You are a specialist in State Farm ALE (Additional Living Expenses) documentation. 
+        Analyze this photo of a receipt, document, or computer screen:
+        1. **Identify Attachment Type**: (e.g., Meals & Expenses, Lodging, Mileage).
+        2. **Extract Figures**: Tally up all dollar amounts and quantities listed.
+        3. **Format**: return a structured Markdown summary including:
+           - Category Name
+           - Total Amount extracted
+           - Itemized breakdown of individual entries`;
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-4.20',
+                    messages: [
+                        { 
+                            role: 'user', 
+                            content: [
+                                { type: "text", text: prompt },
+                                { type: "image_url", image_url: { url: base64DataUrl.startsWith('data:') ? base64DataUrl : `data:image/jpeg;base64,${base64Image}` } }
+                            ]
+                        }
+                    ],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) throw new Error("Grok ALE Analysis Error");
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (error) {
+            console.error("ALE Analysis Error:", error);
+            throw error;
+        }
+    },
+
+    async processXactimate(prompt) {
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("API Key required");
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-4.20',
+                    messages: [ { role: 'user', content: prompt } ],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) throw new Error("Grok Xactimate Error");
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (error) {
+            console.error("Xactimate Extraction Error:", error);
+            throw error;
+        }
+    },
+
+    async generateBatchVoicemailReport(voicemailsContext) {
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("API Key required");
+
+        try {
+            const prompt = `You are a claims adjuster assistant.
+            Review the following list of transcribed voicemails.
+            Generate an urgent "Markdown Priority Callback Table" and summarize the most critical action items.
+            Format the response in cleanly formatted Markdown.
+            
+            Voicemails:
+            ${voicemailsContext}`;
+
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-4.20',
+                    messages: [ { role: 'user', content: prompt } ],
+                    temperature: 0.2
+                })
+            });
+
+            if (!response.ok) throw new Error("Grok Batch Report Error");
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (error) {
+            console.error("Batch Report Error:", error);
+            throw error;
+        }
+    },
+
+    async dictionarySearch(query) {
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) throw new Error("API Key required");
+
+        const prompt = `You are an Xactimate Code Expert. 
+        A user is searching for a material or line item: "${query}".
+        Return a list of the top 5 most relevant Xactimate codes.
+        Include Code, Description, and approximate Category.
+        
+        Return STRICTLY in JSON format:
+        {
+          "items": [
+            { "code": "RFG300", "description": "Comp. shingles - w/ felt - 3-tab - 20-25 yr", "category": "Roofing" }
+          ]
+        }`;
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-4.20',
+                    messages: [ { role: 'user', content: prompt } ],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) throw new Error("Grok Dictionary Error");
+            const data = await response.json();
+            const result = data.choices[0].message.content.trim();
+            const cleaned = result ? result.replace(/```json|```/g, '').trim() : "{}";
+            return JSON.parse(cleaned).items || [];
+        } catch (error) {
+            console.error("Dictionary Search Error:", error);
+            return [];
+        }
     }
 };

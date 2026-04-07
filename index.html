@@ -65,10 +65,12 @@
 
         <!-- Main App Content (Always visible now) -->
         <div id="main-app" class="">
+            <div id="offline-banner" class="hidden">⚠️ Offline Mode - Working from Cache</div>
             <!-- Header -->
             <header class="app-header">
-                <div class="header-title">
-                    <span id="current-view-title">Home</span>
+                <div class="header-title" style="display: flex; align-items: baseline; gap: 8px;">
+                    <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">Claims Tracker</span>
+                    <span id="current-view-title" style="font-size: 0.8em; opacity: 0.6;">Home</span>
                 </div>
                 <div class="header-actions">
                     <button id="btn-logout" class="icon-btn" aria-label="Logout" onclick="window.supabaseClient.auth.signOut()">
@@ -142,6 +144,30 @@
                             <h3>Material ID</h3>
                             <p>Siding & Soffit</p>
                         </button>
+
+                        <button class="action-card" onclick="app.navigate('local-wonders')" style="grid-column: span 1;">
+                            <div class="action-icon explore-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC00); color: white;">
+                                <span class="material-symbols-outlined">explore</span>
+                            </div>
+                            <h3>Local Wonders</h3>
+                            <p>Atlas AI</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('dictionary')" style="grid-column: span 1;">
+                            <div class="action-icon dict-icon" style="background: #673ab7; color: white;">
+                                <span class="material-symbols-outlined">menu_book</span>
+                            </div>
+                            <h3>Xact Dictionary</h3>
+                            <p>AI Code Search</p>
+                        </button>
+
+                        <button class="action-card" onclick="document.getElementById('modal-signature').classList.remove('hidden')" style="grid-column: span 2;">
+                            <div class="action-icon sign-icon" style="background: #4caf50; color: white;">
+                                <span class="material-symbols-outlined">draw</span>
+                            </div>
+                            <h3>Field Authorization</h3>
+                            <p>Digital Signature Capture</p>
+                        </button>
                     </div>
 
                     <div class="dashboard-widgets">
@@ -160,7 +186,12 @@
                 <!-- Tasks View -->
                 <section id="view-tasks" class="view">
                     <div class="view-content">
-                        <h2>My Tasks</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin:0;">My Tasks</h2>
+                            <button class="btn btn-secondary btn-small" onclick="app.generateBatchReport()" style="display:flex; align-items:center; gap:5px; font-size:0.75rem;">
+                                <span class="material-symbols-outlined" style="font-size:16px;">bolt</span> Priority Report
+                            </button>
+                        </div>
                         <ul id="tasks-list" class="task-list">
                             <!-- Tasks injected here -->
                         </ul>
@@ -301,6 +332,29 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Local Wonders View -->
+                <section id="view-local-wonders" class="view">
+                    <div class="view-content">
+                        <h2>Local Wonders</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.9rem;">
+                            Discover eccentric, historical, or unusual points of interest near your current location. Powered by AI.
+                        </p>
+                        
+                        <button class="btn btn-primary btn-block" id="btn-discover-wonders" onclick="app.discoverWonders()" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <span class="material-symbols-outlined">explore</span> Find Nearby Locations
+                        </button>
+
+                        <div id="wonders-loading" class="hidden" style="text-align: center; margin-top: 20px; color: var(--text-secondary);">
+                            <span class="material-symbols-outlined" style="animation: spin 2s linear infinite; display: inline-block; font-size: 32px;">sync</span>
+                            <p style="margin-top: 10px;">Scanning terrain & consulting AI...</p>
+                        </div>
+
+                        <ul id="wonders-list" class="task-list" style="margin-top: 20px;">
+                            <!-- Injected by app.js -->
+                        </ul>
+                    </div>
+                </section>
                 
                 <!-- Settings View -->
                 <section id="view-settings" class="view">
@@ -407,8 +461,8 @@
                         </div>
                         
                         <div style="margin-top: 30px; text-align: center; color: var(--text-secondary); font-size: 0.75rem;">
-                            App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.6.0 (Bypass Mode)</span><br>
-                            Engine: Grok-4.20 Flagship
+                            App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.7.5 (Field Ultimate)</span><br>
+                            Engine: Grok-4.20 Field Expert
                         </div>
                     </div>
                 </section>
@@ -475,8 +529,19 @@
                 <section id="view-vision" class="view">
                     <div class="view-content voice-container">
                         <h2>AI Image Analysis</h2>
-                        <p class="subtitle">Upload a photo for damage recognition</p>
+                        <p class="subtitle">Upload a photo for damage recognition or scan receipts</p>
                         
+                        <div style="display:flex; justify-content:center; gap: 15px; margin-top: 15px; background:var(--bg-surface-light); padding:10px; border-radius:8px;">
+                            <label style="display:flex; align-items:center; gap:5px; font-size:0.9rem; cursor:pointer; font-weight:bold;">
+                                <input type="radio" name="vision-mode" value="damage" checked> 
+                                <span class="material-symbols-outlined" style="font-size:18px;">home_work</span> Damage Scan
+                            </label>
+                            <label style="display:flex; align-items:center; gap:5px; font-size:0.9rem; cursor:pointer; font-weight:bold;">
+                                <input type="radio" name="vision-mode" value="ale"> 
+                                <span class="material-symbols-outlined" style="font-size:18px;">receipt_long</span> ALE/Receipt Scan
+                            </label>
+                        </div>
+
                         <div style="margin-top: 20px; text-align: center;">
                             <input type="file" id="vision-file-input" accept="image/*" multiple style="display: none;" onchange="app.handleVisionImageSelect(event)">
                             <button class="btn btn-primary btn-large" onclick="document.getElementById('vision-file-input').click()" style="display:flex; align-items:center; justify-content:center; gap:8px; margin: 0 auto;">
@@ -486,7 +551,7 @@
                             <div id="vision-preview-container" class="hidden" style="margin-top: 20px;">
                                 <img id="vision-preview-img" src="" alt="Selected Photo" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid var(--border-color);">
                                 <button id="btn-analyze-vision" class="btn btn-success btn-block" onclick="app.analyzePhoto()" style="margin-top: 15px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                                    <span class="material-symbols-outlined">psychology</span> Analyze Damage
+                                    <span class="material-symbols-outlined">psychology</span> Analyze Image
                                 </button>
                             </div>
                             
@@ -563,6 +628,30 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Dictionary View -->
+                <section id="view-dictionary" class="view">
+                    <div class="view-content">
+                        <div class="dictionary-search">
+                            <h2>Xactimate Dictionary</h2>
+                            <p class="subtitle">Search codes via AI or Keyword</p>
+                            <div class="input-group" style="display:flex; gap:10px;">
+                                <input type="text" id="dict-search-input" placeholder="e.g., '3-tab shingle removal' or 'RFG300'" style="flex:1;">
+                                <button class="btn btn-primary" onclick="app.searchDictionary()" style="padding: 12px;"><span class="material-symbols-outlined">search</span></button>
+                            </div>
+                        </div>
+                        
+                        <div id="dict-loading" class="hidden" style="text-align: center; padding: 20px;">
+                            <span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span>
+                            <p>Consulting Xactimate Brain...</p>
+                        </div>
+
+                        <ul id="dict-results" class="dictionary-results task-list">
+                            <!-- Results injected here -->
+                            <li class="empty-state">Search for a material to see codes and descriptions.</li>
+                        </ul>
+                    </div>
+                </section>
             </main>
 
             <!-- Bottom Navigation -->
@@ -588,10 +677,30 @@
                     <span>Settings</span>
                 </a>
             </nav>
+
+            <!-- Global Brain Dump FAB -->
+            <button id="btn-global-brain-dump" class="fab-brain-dump" aria-label="Windshield Brain Dump" onclick="app.toggleBrainDump()">
+                <div class="pulse-ring hidden" id="brain-dump-pulse"></div>
+                <span class="material-symbols-outlined" style="font-size: 32px;">mic</span>
+            </button>
         </div>
     </div>
     
     <!-- Modals -->
+    
+    <!-- Brain Dump Action Summary Modal -->
+    <div id="modal-brain-dump-summary" class="modal hidden">
+        <div class="modal-content brain-dump-modal-content">
+            <div class="modal-header">
+                <h3 style="color: var(--primary-color);">Intel Captured</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div id="brain-dump-results" class="modal-body" style="background: var(--bg-surface-light);">
+                <!-- Dynamic Content goes here -->
+            </div>
+        </div>
+    </div>
+
     <!-- New Task Modal -->
     <div id="modal-new-task" class="modal hidden">
         <div class="modal-content">
@@ -680,6 +789,28 @@
                     <button id="btn-finish-scan" class="btn btn-success btn-block disabled" onclick="app.finishPolicyScan()" disabled>
                         <span class="material-symbols-outlined">cloud_done</span> Finish & Sync Policy
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signature Pad Modal -->
+    <div id="modal-signature" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Capture Authorization</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.85rem;">Please sign within the box below for <strong>Authorization to Inspect</strong>.</p>
+                
+                <div class="signature-container">
+                    <canvas id="signature-pad"></canvas>
+                </div>
+                
+                <div class="signature-actions">
+                    <button class="btn btn-secondary" onclick="app.clearSignature()">Clear</button>
+                    <button class="btn btn-primary btn-block" onclick="app.saveSignature()">Confirm Signature</button>
                 </div>
             </div>
         </div>

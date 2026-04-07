@@ -482,3 +482,144 @@ body {
     border-left-color: var(--success-color);
     background: rgba(76, 175, 80, 0.1);
 }
+
+/* Brain Dump FAB Overrides */
+.fab-brain-dump {
+    position: fixed;
+    bottom: calc(var(--nav-height) + 20px);
+    right: 20px;
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF3B30, #ff1a8c);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 15px rgba(255, 59, 48, 0.5), 0 0 20px rgba(255, 26, 140, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 900;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fab-brain-dump:active {
+    transform: scale(0.92);
+}
+
+.fab-brain-dump.recording-active {
+    background: #FF3B30;
+    box-shadow: 0 0 30px #FF3B30, 0 0 60px #ff1a8c;
+    animation: flashMic 1s infinite alternate;
+}
+
+@keyframes flashMic {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.1); opacity: 1; }
+}
+
+.brain-dump-modal-content {
+    background: rgba(30, 30, 30, 0.95) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brain-dump-modal-content h3 {
+    background: linear-gradient(90deg, #FF3B30, #ff1a8c);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+/* Evidence Metadata Tags */
+.evidence-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 122, 255, 0.15);
+    color: var(--primary-color);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    border: 1px solid rgba(0, 122, 255, 0.3);
+}
+
+/* Signature Pad */
+.signature-container {
+    width: 100%;
+    background: #FFFFFF;
+    border-radius: 8px;
+    border: 2px dashed var(--border-color);
+    position: relative;
+    margin: 15px 0;
+    touch-action: none;
+}
+#signature-pad {
+    width: 100%;
+    height: 180px;
+    display: block;
+}
+.signature-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* Dictionary View */
+.dictionary-search {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-dark);
+    padding-bottom: 15px;
+}
+.dictionary-results {
+    margin-top: 10px;
+}
+.code-card {
+    background: var(--bg-surface-light);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.code-card .code-label {
+    font-weight: 800;
+    color: var(--primary-color);
+    font-family: 'Courier New', Courier, monospace;
+}
+.code-card .unit-price {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+/* Offline Banner */
+#offline-banner {
+    background: var(--danger-color);
+    color: white;
+    text-align: center;
+    padding: 5px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Floating Evidence Display */
+.evidence-overlay {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    pointer-events: none;
+}

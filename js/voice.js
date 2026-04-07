@@ -45,7 +45,13 @@ const voiceModule = {
         this.recognition.onend = () => {
             this.isRecording = false;
             this.updateUIStatus(false);
-            // Optionally auto-restart if we want continuous listening
+            
+            // Trigger finish for Brain Dump
+            if (this.targetElementId === 'global-brain-dump') {
+                if (window.app && typeof window.app.finishBrainDump === 'function') {
+                    window.app.finishBrainDump(this.finalTranscript);
+                }
+            }
         };
 
         this.bindEvents();
@@ -166,6 +172,19 @@ const voiceModule = {
             } else {
                 brainBtn.innerHTML = '<span class="material-symbols-outlined">mic</span> Start Listening';
                 brainBtn.classList.replace('btn-danger', 'btn-primary');
+            }
+        }
+
+        // Update Brain Dump FAB UI
+        const fab = document.getElementById('btn-global-brain-dump');
+        const fabPulse = document.getElementById('brain-dump-pulse');
+        if (fab && this.targetElementId === 'global-brain-dump') {
+            if (isRecording) {
+                fab.classList.add('recording-active');
+                if(fabPulse) fabPulse.classList.remove('hidden');
+            } else {
+                fab.classList.remove('recording-active');
+                if(fabPulse) fabPulse.classList.add('hidden');
             }
         }
     },

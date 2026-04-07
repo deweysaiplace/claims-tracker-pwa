@@ -21,6 +21,24 @@ const app = {
         // Setup simple navigation
         const hash = window.location.hash.replace('#', '') || 'home';
         this.navigate(hash);
+
+        this.setupOfflineDetection();
+        this.initSignaturePad();
+    },
+
+    setupOfflineDetection() {
+        const updateOnlineStatus = () => {
+            const banner = document.getElementById('offline-banner');
+            if (navigator.onLine) {
+                if (banner) banner.classList.add('hidden');
+            } else {
+                if (banner) banner.classList.remove('hidden');
+            }
+        };
+
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus();
     },
 
     updateDBStatus() {
@@ -50,12 +68,12 @@ const app = {
     setupErrorHandlers() {
         window.onerror = (message, source, lineno, colno, error) => {
             const userId = auth.currentUser ? auth.currentUser.id : null;
-            db.logError(userId, message, error ? error.stack : `At ${source}:${lineno}`, this.currentView, "v1.5.0");
+            db.logError(userId, message, error ? error.stack : `At ${source}:${lineno}`, this.currentView, "v1.6.0");
         };
 
         window.onunhandledrejection = (event) => {
             const userId = auth.currentUser ? auth.currentUser.id : null;
-            db.logError(userId, "Unhandled Promise Rejection: " + event.reason, null, this.currentView, "v1.5.0");
+            db.logError(userId, "Unhandled Promise Rejection: " + event.reason, null, this.currentView, "v1.6.0");
         };
     },
 
@@ -124,7 +142,8 @@ const app = {
             'settings': 'Settings',
             'vision': 'AI Vision',
             'policy-chat': 'Policy Chat',
-            'weather': 'Weather Check'
+            'weather': 'Weather Check',
+            'dictionary': 'Dictionary'
         };
         const titleEl = document.getElementById('current-view-title');
         if(titleEl && titles[viewId]) {
@@ -836,12 +855,32 @@ const app = {
         const transcript = document.getElementById('vision-transcript');
         const origBtnText = btn.innerHTML;
         
+        // Check vision mode
+        const modeRadio = document.querySelector('input[name="vision-mode"]:checked');
+        const mode = modeRadio ? modeRadio.value : 'damage';
+        
         try {
-            btn.innerHTML = `<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Analyzing ${this.currentVisionBase64.length} Photos...`;
+            btn.innerHTML = `<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Analyzing ${mode === 'ale' ? 'Receipts' : 'Damage'}...`;
             btn.disabled = true;
+
+            // EVIDENCE ELITE - Gather Metadata
+            let metadata = `[Timestamp: ${new Date().toLocaleString()}]`;
+            try {
+                const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout: 5000}));
+                metadata += ` [GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}]`;
+            } catch(e) { console.warn("GPS metadata skipped"); }
+
+            let result = "";
+            if (mode === 'ale') {
+                // For ALE, we analyze the first image
+                result = await aiBrain.analyzeALEPhoto(this.currentVisionBase64[0]);
+            } else {
+                // Prepend metadata to the analysis request
+                const enhancedPrompt = `Metadata: ${metadata}\n\nAnalyze these photos for insurance claim damage.`;
+                result = await aiBrain.analyzeImage(this.currentVisionBase64, enhancedPrompt);
+            }
             
-            const result = await aiBrain.analyzeImage(this.currentVisionBase64);
-            transcript.value = result;
+            transcript.value = `--- EVIDENCE LOG ---\n${metadata}\n\n--- AI ANALYSIS ---\n${result}`;
             outBox.classList.remove('hidden');
         } catch(e) {
             console.error(e);
@@ -1257,6 +1296,337 @@ const app = {
         } finally {
             if (loading) loading.classList.add('hidden');
         }
+    },
+
+    toggleBrainDump() {
+        if (!window.voiceModule) {
+            alert("Voice module not initialized.");
+            return;
+        }
+        
+        window.voiceModule.targetElementId = 'global-brain-dump';
+        window.voiceModule.toggleRecording();
+    },
+
+    async finishBrainDump(transcript) {
+        if (!transcript || transcript.trim() === '') {
+            console.log("No transcript for brain dump.");
+            return;
+        }
+        
+        try {
+            const actionData = await aiBrain.processWindshieldBrainDump(transcript);
+            this.displayBrainDumpSummary(actionData);
+        } catch (e) {
+            console.error("Brain Dump Processing Error:", e);
+            alert("Error processing brain dump.");
+        }
+    },
+
+    displayBrainDumpSummary(data) {
+        const modal = document.getElementById('modal-brain-dump-summary');
+        const resultsContainer = document.getElementById('brain-dump-results');
+        if (!modal || !resultsContainer || !data) return;
+        
+        let html = '';
+        
+        if (data.tasks && data.tasks.length > 0) {
+            html += '<h3 style="color: var(--primary-color); margin-top: 1rem; font-size: 0.9rem;">Tasks Created</h3>';
+            data.tasks.forEach(t => {
+                const prio = t.priority ? `P${t.priority}` : 'Task';
+                html += `<div style="display:flex; gap:10px; padding:10px; background:var(--bg-surface); border-radius:8px; margin-bottom:8px;">
+                    <span style="background:var(--primary-color); color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; height:fit-content;">${prio}</span>
+                    <div style="flex:1; font-size: 0.85rem;"><strong>${this.escapeHTML(t.claimName||'General')}</strong>: ${this.escapeHTML(t.description)}</div>
+                </div>`;
+                
+                if (window.auth && window.auth.currentUser && window.db) {
+                    window.db.addTask(window.auth.currentUser.id, `[${t.claimName||'General'}] ${t.description}`).then(() => this.loadData());
+                }
+            });
+        }
+
+        if (data.emails && data.emails.length > 0) {
+            html += '<h3 style="color: #fbbf24; margin-top: 1rem; font-size: 0.9rem;">Emails Drafted</h3>';
+            data.emails.forEach(e => {
+                const mailtoUrl = `mailto:?subject=${encodeURIComponent("Claim Update")}&body=${encodeURIComponent(e.content)}`;
+                html += `<div style="display:flex; gap:10px; padding:10px; background:var(--bg-surface); border-radius:8px; margin-bottom:8px; justify-content:space-between; align-items:center;">
+                    <div style="font-size: 0.85rem;"><strong>To: ${this.escapeHTML(e.recipient)}</strong><br><span style="opacity:0.7;">${this.escapeHTML(e.content)}</span></div>
+                    <a href="${mailtoUrl}" class="btn btn-secondary" style="font-size: 0.7rem; padding: 6px 10px; text-decoration: none;">Send</a>
+                </div>`;
+            });
+        }
+
+        if (data.sms && data.sms.length > 0) {
+            html += '<h3 style="color: #34d399; margin-top: 1rem; font-size: 0.9rem;">Texts Prepared</h3>';
+            data.sms.forEach(s => {
+                const smsUrl = `sms:?&body=${encodeURIComponent(s.content)}`;
+                html += `<div style="display:flex; gap:10px; padding:10px; background:var(--bg-surface); border-radius:8px; margin-bottom:8px; justify-content:space-between; align-items:center;">
+                    <div style="font-size: 0.85rem;"><strong>To: ${this.escapeHTML(s.recipient)}</strong><br><span style="opacity:0.7;">${this.escapeHTML(s.content)}</span></div>
+                    <a href="${smsUrl}" class="btn btn-secondary" style="font-size: 0.7rem; padding: 6px 10px; text-decoration: none;">Text</a>
+                </div>`;
+            });
+        }
+
+        if (data.notes && data.notes.length > 0) {
+            html += '<h3 style="color: #9ca3af; margin-top: 1rem; font-size: 0.9rem;">Field Notes</h3>';
+            data.notes.forEach(n => {
+                html += `<div style="padding:10px; background:var(--bg-surface); border-radius:8px; margin-bottom:8px; font-size: 0.85rem; opacity: 0.8;">
+                    ${this.escapeHTML(n)}
+                </div>`;
+            });
+        }
+
+        if (html === '') {
+            html = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">No actionable items detected from the audio.</div>';
+        }
+
+        resultsContainer.innerHTML = html;
+        modal.classList.remove('hidden');
+    },
+    
+    escapeHTML(str) {
+        if (!str) return '';
+        return str.toString().replace(/[&<>'"]/g, 
+            tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag] || tag)
+        );
+    },
+
+    async discoverWonders() {
+        const loading = document.getElementById('wonders-loading');
+        const list = document.getElementById('wonders-list');
+        const btn = document.getElementById('btn-discover-wonders');
+        
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser.");
+            return;
+        }
+        
+        if (loading) loading.classList.remove('hidden');
+        if (list) list.innerHTML = '';
+        if (btn) btn.disabled = true;
+
+        try {
+            const pos = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+            });
+            
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            
+            const pois = await aiBrain.findNearbyPOIs(lat, lng);
+            
+            if (pois.length === 0) {
+                list.innerHTML = '<li class="empty-state">No points of interest found automatically. Maybe try manually searching?</li>';
+            } else {
+                pois.forEach(poi => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="task-content" style="flex:1;">
+                            <strong>${this.escapeHTML(poi.name)}</strong>
+                            <span class="code-badge" style="background:var(--primary-color); color:white; font-size:0.7em; padding:2px 6px; border-radius:4px; margin-left:8px;">${this.escapeHTML(poi.category)}</span>
+                            <p style="font-size: 0.85em; color: var(--text-secondary); margin-top: 5px;">${this.escapeHTML(poi.description)}</p>
+                        </div>
+                        <div class="task-actions" style="margin-left:15px; display:flex; flex-direction:column; gap:5px;">
+                            <a href="https://maps.google.com/?q=${poi.lat},${poi.lng}" target="_blank" class="icon-btn" style="background:rgba(0,122,255,0.1); border-radius:8px; padding:8px; text-decoration:none;">
+                                <span class="material-symbols-outlined" style="color:var(--primary-color);">map</span>
+                            </a>
+                        </div>
+                    `;
+                    li.style.display = 'flex';
+                    li.style.justifyContent = 'space-between';
+                    li.style.alignItems = 'center';
+                    li.style.padding = '15px';
+                    li.style.borderBottom = '1px solid var(--border-color)';
+                    li.style.background = 'var(--bg-surface-light)';
+                    li.style.borderRadius = '8px';
+                    li.style.marginBottom = '10px';
+                    
+                    list.appendChild(li);
+                });
+            }
+        } catch (e) {
+            console.error("Local Wonders Error:", e);
+            if (list) list.innerHTML = '<li class="empty-state" style="color:var(--danger-color);">Error fetching local wonders. Make sure you allow GPS tracking and your API key is set.</li>';
+        } finally {
+            if (loading) loading.classList.add('hidden');
+            if (btn) btn.disabled = false;
+        }
+    },
+
+    async generateBatchReport() {
+        if (!confirm("This will analyze your open tasks and active claims to generate a callback priority report. Proceed?")) return;
+        
+        try {
+            // Get all tasks to act as our voicemail/action item context
+            let tasks = [];
+            if (window.db && window.auth.currentUser) {
+                const fetched = await db.getTasks(window.auth.currentUser.id);
+                tasks = fetched.filter(t => t.status !== 'Completed');
+            }
+            
+            let context = tasks.map(t => `- Task [P${t.priority || 'Normal'}]: ${t.description} (Claim: ${t.claims ? t.claims.claim_number : 'General'})`).join("\n");
+            
+            // Look for actual raw voicemails if possible via direct supabase call
+            if (window.supabaseClient) {
+                 const {data} = await window.supabaseClient.from('voicemails').select('*').eq('user_id', window.auth.currentUser.id).order('created_at', {ascending: false}).limit(10);
+                 if (data && data.length > 0) {
+                     context += "\n\nRaw Voicemails (Unprocessed):\n" + data.map(v => `- [${new Date(v.created_at).toLocaleString()}] ${v.transcript}`).join("\n");
+                 }
+            }
+
+            if (!context.trim()) {
+                alert("You have no open tasks or raw voicemails to generate a report from.");
+                return;
+            }
+
+            const modal = document.getElementById('modal-brain-dump-summary'); 
+            const resultsContainer = document.getElementById('brain-dump-results');
+            
+            // Show loading in modal
+            if(modal) modal.classList.remove('hidden');
+            if(resultsContainer) resultsContainer.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-secondary);"><span class="material-symbols-outlined" style="animation: spin 2s linear infinite; font-size:32px;">sync</span><p>Consulting Grok to build Priority Report...</p></div>';
+            
+            const rawMarkdown = await aiBrain.generateBatchVoicemailReport(context);
+            
+            let htmlForm = rawMarkdown
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+            if(resultsContainer) {
+                resultsContainer.innerHTML = `
+                    <h3 style="color:var(--primary-color); margin-bottom:10px;">Priority Callback Report</h3>
+                    <div style="font-size:0.85rem; line-height:1.5; background:var(--bg-surface-light); padding:15px; border-radius:8px; overflow-x:auto;">
+                        <p>${htmlForm}</p>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error generating batch report. Do you have a network connection and valid Grok API key?");
+            if (modal) modal.classList.add('hidden');
+        }
+    },
+
+    async searchDictionary() {
+        const input = document.getElementById('dict-search-input');
+        const query = input.value.trim();
+        const loading = document.getElementById('dict-loading');
+        const list = document.getElementById('dict-results');
+        
+        if (!query) return;
+        
+        loading.classList.remove('hidden');
+        list.innerHTML = '';
+
+        try {
+            const results = await aiBrain.dictionarySearch(query);
+            
+            if (results.length === 0) {
+                list.innerHTML = '<li class="empty-state">No matching codes found. Try a different term.</li>';
+            } else {
+                results.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'code-card';
+                    li.innerHTML = `
+                        <div class="task-content">
+                            <span class="code-label">${item.code}</span>
+                            <div style="font-size: 0.85rem; margin-top: 5px;">${this.escapeHTML(item.description)}</div>
+                            <span style="font-size: 0.7rem; opacity: 0.6;">Category: ${item.category}</span>
+                        </div>
+                        <button class="icon-btn" onclick="app.copyToClipboard('${item.code}')">
+                            <span class="material-symbols-outlined">content_copy</span>
+                        </button>
+                    `;
+                    list.appendChild(li);
+                });
+            }
+        } catch (e) {
+            console.error(e);
+            list.innerHTML = '<li class="empty-state" style="color:var(--danger-color);">Error searching dictionary.</li>';
+        } finally {
+            loading.classList.add('hidden');
+        }
+    },
+
+    // --- SIGNATURE PAD --- //
+    
+    initSignaturePad() {
+        const canvas = document.getElementById('signature-pad');
+        if (!canvas) return;
+        
+        // Resize canvas to its container
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
+
+        this.signatureCtx = canvas.getContext('2d');
+        this.signatureCtx.strokeStyle = "#222";
+        this.signatureCtx.lineWidth = 2;
+        this.isDrawing = false;
+
+        const startDrawing = (e) => {
+            this.isDrawing = true;
+            const pos = this.getCanvasPos(e);
+            this.signatureCtx.beginPath();
+            this.signatureCtx.moveTo(pos.x, pos.y);
+        };
+
+        const draw = (e) => {
+            if (!this.isDrawing) return;
+            const pos = this.getCanvasPos(e);
+            this.signatureCtx.lineTo(pos.x, pos.y);
+            this.signatureCtx.stroke();
+            e.preventDefault();
+        };
+
+        const stopDrawing = () => {
+            this.isDrawing = false;
+        };
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+    },
+
+    getCanvasPos(e) {
+        const canvas = document.getElementById('signature-pad');
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    },
+
+    clearSignature() {
+        const canvas = document.getElementById('signature-pad');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    },
+
+    saveSignature() {
+        const canvas = document.getElementById('signature-pad');
+        const dataUrl = canvas.toDataURL();
+        alert("Signature captured as DataURL. Saving to claim files...");
+        document.getElementById('modal-signature').classList.add('hidden');
+    },
+
+    copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert(`Copied: ${text}`);
+        });
     }
 };
 
