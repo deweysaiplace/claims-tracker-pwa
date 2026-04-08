@@ -1980,9 +1980,11 @@ const app = {
         } else {
             sfeBtn.classList.add('hidden');
         }
-        this.ctreData = { ctre: null, sfe: null };
+        this.ctreData = { ctre: [], sfe: [] };
         document.getElementById('ctre-preview-container').classList.add('hidden');
         document.getElementById('sfe-status-text').classList.add('hidden');
+        document.getElementById('ctre-photo-count').textContent = '0';
+        document.getElementById('sfe-photo-count').textContent = '0';
         document.getElementById('ctre-output-container').classList.add('hidden');
     },
 
@@ -1998,11 +2000,7 @@ const app = {
         previewContainer.classList.remove('hidden');
         processBtn.classList.add('hidden');
 
-        // Reset for new upload batch if desired, or append? 
-        // User asked to "upload multiple photos", usually implies a single batch selection.
-        // Let's clear and set to the new selection to avoid accidental bloat.
-        this.ctreData[type] = [];
-
+        // Append to current collection for this type
         try {
             for (const file of files) {
                 if (file.type === 'application/pdf') {
@@ -2038,7 +2036,7 @@ const app = {
         if (countSpan) countSpan.textContent = this.ctreData[type].length;
 
         if (type === 'sfe') {
-            document.getElementById('sfe-status-text').classList.remove('hidden');
+            document.getElementById('sfe-status-area').classList.remove('hidden');
         }
         const mode = document.querySelector('input[name="ctre-mode"]:checked').value;
         const hasCtre = this.ctreData.ctre && this.ctreData.ctre.length > 0;
@@ -2048,6 +2046,23 @@ const app = {
             processBtn.classList.remove('hidden');
         } else if (mode === 'compare' && hasCtre && hasSfe) {
             processBtn.classList.remove('hidden');
+        }
+    },
+
+    clearPhotos(type) {
+        this.ctreData[type] = [];
+        const countSpan = document.getElementById(`${type}-photo-count`);
+        if (countSpan) countSpan.textContent = '0';
+        
+        if (type === 'sfe') {
+            document.getElementById('sfe-status-area').classList.add('hidden');
+        }
+        
+        const processBtn = document.getElementById('btn-process-ctre');
+        this.checkCtreReady(type, processBtn);
+        
+        if (this.ctreData.ctre.length === 0 && this.ctreData.sfe.length === 0) {
+            document.getElementById('ctre-preview-container').classList.add('hidden');
         }
     },
 

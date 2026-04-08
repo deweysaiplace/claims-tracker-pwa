@@ -576,8 +576,14 @@
                             </div>
                             
                             <div id="ctre-preview-container" class="hidden" style="margin-top: 15px; text-align:left;">
-                                <p id="ctre-status-text" style="font-size: 0.85rem; color: var(--success-color);"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> CTRE Loaded: <span id="ctre-photo-count">0</span> pages</p>
-                                <p id="sfe-status-text" class="hidden" style="font-size: 0.85rem; color: var(--success-color); margin-top: 5px;"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> SFE Loaded: <span id="sfe-photo-count">0</span> pages</p>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <p id="ctre-status-text" style="font-size: 0.85rem; color: var(--success-color);"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> CTRE-Scan: <span id="ctre-photo-count">0</span> pages</p>
+                                    <button class="icon-btn" onclick="app.clearPhotos('ctre')" style="color: var(--danger-color); font-size: 0.8rem;">[Clear]</button>
+                                </div>
+                                <div id="sfe-status-area" class="hidden" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                                    <p id="sfe-status-text" style="font-size: 0.85rem; color: var(--success-color);"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> SFE-Scan: <span id="sfe-photo-count">0</span> pages</p>
+                                    <button class="icon-btn" onclick="app.clearPhotos('sfe')" style="color: var(--danger-color); font-size: 0.8rem;">[Clear]</button>
+                                </div>
                                 
                                 <button id="btn-process-ctre" class="btn btn-primary btn-block btn-large pulse hidden" style="margin-top: 15px;" onclick="app.processCtre()">
                                     Generate Xactimate Codes
