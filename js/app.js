@@ -164,6 +164,10 @@ const app = {
             this.resetMaterialID();
         }
         
+        if (viewId === 'drafts') {
+            this.loadDrafts();
+        }
+        
         this.currentView = viewId;
         window.location.hash = viewId;
 
@@ -1717,6 +1721,118 @@ const app = {
             btn.innerHTML = origBtnText;
             btn.disabled = false;
         }
+    },
+
+    // -------------------------------------------------------------------------
+    // Draft Estimates Logic
+    // -------------------------------------------------------------------------
+    openSaveDraftModal(source) {
+        let codes = "";
+        if (source === 'summary') {
+            codes = document.getElementById('xactimate-transcript').value;
+        } else if (source === 'estimate') {
+            codes = document.getElementById('estimate-transcript').value;
+        }
+
+        if (!codes || codes.trim() === "") {
+            return alert("No codes found to save. Please extract codes first.");
+        }
+
+        document.getElementById('draft-codes-hidden').value = codes;
+        document.getElementById('draft-title-input').value = "";
+        
+        // Populate claims dropdown
+        const select = document.getElementById('draft-claim-id');
+        select.innerHTML = '<option value="">-- No Specific Claim --</option>';
+        this.loadedPolicies.forEach(p => {
+            // Reusing this.loadedPolicies list or fetching claims?
+            // Let's use getActiveClaims if needed, but for now we'll just use what's loaded.
+        });
+
+        document.getElementById('modal-save-draft').classList.remove('hidden');
+    },
+
+    async saveDraftEstimate() {
+        const title = document.getElementById('draft-title-input').value.trim();
+        const codes = document.getElementById('draft-codes-hidden').value;
+        const claimId = document.getElementById('draft-claim-id').value || null;
+
+        if (!title) return alert("Please enter a title for this draft.");
+
+        try {
+            this.showToast("Saving draft...", "info");
+            await db.saveDraftEstimate(auth.currentUser.id, title, codes, claimId);
+            this.showToast("Draft saved successfully!", "success");
+            document.getElementById('modal-save-draft').classList.add('hidden');
+            if (this.currentView === 'drafts') this.loadDrafts();
+        } catch(e) {
+            console.error(e);
+            alert("Error saving draft.");
+        }
+    },
+
+    async loadDrafts() {
+        const list = document.getElementById('drafts-list');
+        const loading = document.getElementById('drafts-loading');
+        
+        try {
+            loading.classList.remove('hidden');
+            list.innerHTML = '';
+            
+            const drafts = await db.getDraftEstimates(auth.currentUser.id);
+            loading.classList.add('hidden');
+
+            if (drafts.length === 0) {
+                list.innerHTML = '<li class="empty-state">No drafts saved yet.</li>';
+                return;
+            }
+
+            drafts.forEach(d => {
+                const li = document.createElement('li');
+                li.className = 'task-item';
+                li.style.flexDirection = 'column';
+                li.style.alignItems = 'flex-start';
+                li.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                        <strong style="color:var(--primary-color);">${this.escapeHTML(d.title)}</strong>
+                        <span style="font-size:0.7rem; opacity:0.6;">${new Date(d.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div style="font-family:monospace; font-size:0.75rem; background:rgba(255,255,255,0.05); padding:8px; border-radius:4px; width:100%; margin:8px 0; max-height:100px; overflow-y:auto; white-space:pre-wrap;">${this.escapeHTML(d.codes)}</div>
+                    <div style="display:flex; gap:10px; width:100%;">
+                        <button class="btn btn-secondary btn-small" style="flex:1" onclick="app.copyText('${d.id}')">Copy Codes</button>
+                        <button class="btn btn-danger btn-small" style="background:#442222;" onclick="app.deleteDraft('${d.id}')">Delete</button>
+                    </div>
+                `;
+                // Store actual codes in a hidden way for copy
+                li.dataset.codes = d.codes;
+                li.id = `draft-${d.id}`;
+                list.appendChild(li);
+            });
+        } catch (e) {
+            console.error(e);
+            loading.classList.add('hidden');
+            list.innerHTML = '<li class="empty-state">Error loading drafts.</li>';
+        }
+    },
+
+    async deleteDraft(id) {
+        if (!confirm("Are you sure you want to delete this draft?")) return;
+        try {
+            await db.deleteDraftEstimate(id);
+            this.showToast("Draft deleted.");
+            this.loadDrafts();
+        } catch(e) {
+            console.error(e);
+            alert("Error deleting draft.");
+        }
+    },
+
+    copyText(id) {
+        const el = document.getElementById(`draft-${id}`);
+        const codes = el.dataset.codes;
+        navigator.clipboard.writeText(codes).then(() => {
+            this.showToast("Codes copied to clipboard!");
+        });
     }
 };
 

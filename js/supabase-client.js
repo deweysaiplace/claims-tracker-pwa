@@ -180,6 +180,52 @@ window.db = {
     },
 
     // -------------------------------------------------------------------------
+    // Draft Estimates
+    // -------------------------------------------------------------------------
+    async saveDraftEstimate(userId, title, codes, claimId = null) {
+        const client = this._getClient();
+        const { data, error } = await client
+            .from('draft_estimates')
+            .insert([{
+                user_id: userId,
+                claim_id: claimId,
+                title: title,
+                codes: codes
+            }]);
+        if (error) throw error;
+        return data;
+    },
+
+    async getDraftEstimates(userId) {
+        const client = this._getClient();
+        const { data, error } = await client
+            .from('draft_estimates')
+            .select(`
+                *,
+                claims (
+                    claim_number
+                )
+            `)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.error('Error fetching drafts:', error);
+            return [];
+        }
+        return data;
+    },
+
+    async deleteDraftEstimate(id) {
+        const client = this._getClient();
+        const { data, error } = await client
+            .from('draft_estimates')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+        return data;
+    },
+
+    // -------------------------------------------------------------------------
     // Error Logs
     // -------------------------------------------------------------------------
     async logError(userId, message, stack, viewId, appVersion) {
