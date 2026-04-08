@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>The Claims Experience</title>
     
     <!-- PWA Manifest -->
@@ -17,8 +17,8 @@
     <!-- Icons (Material Symbols) -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
 
-    <!-- CSS -->
-    <link rel="stylesheet" href="css/style.css?v=11">
+    <!-- Styles (Vite will handle this) -->
+    <link rel="stylesheet" href="/src/styles/main.css">
     
     <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -38,7 +38,7 @@
                 <div class="auth-card" style="text-align: center; max-width: 320px; width: 100%; padding: 20px; background: var(--bg-surface); border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
                     <div style="font-size: 3rem; margin-bottom: 20px;">🛡️</div>
                     <h2 style="margin-bottom: 5px;">The Claims Experience</h2>
-                    <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.9rem;">App Version v2.0.0 (Flagship AI)</p>
+                    <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.9rem;">v2.0.0 (Agent Suite)</p>
                     
                     <form id="login-form">
                         <div class="input-group" style="text-align: center;">
@@ -1298,18 +1298,8 @@
     <!-- Hidden Version Track -->
     <div id="app-version" style="display:none">v1.9.0</div>
     
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <script src="js/supabase-client.js?v=25"></script>
-    <script src="js/auth.js?v=25"></script>
-    <script src="js/voice.js?v=25"></script>
-    <script src="js/ai-brain.js?v=25"></script>
-    <script src="js/water-loss-agent.js?v=25"></script>
-    <script src="js/water-mit.js?v=25"></script>
-    <script src="js/remote-bridge.js?v=25"></script>
-    <script src="js/app.js?v=25"></script>
+    <!-- Entry Point (Vite ESM Surgery) -->
+    <script type="module" src="/src/main.js"></script>
     
     <!-- Register Service Worker -->
     <script>

@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>The Claims Experience</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons (Material Symbols) -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+
+    <!-- Styles (Vite will handle this) -->
+    
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
+  <script type="module" crossorigin src="/assets/index-ZJpTAbJe.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CjLZ7ZnT.css">
+<link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+<body>
+    <!-- App Shell -->
+    <div id="app" class="app-container">
+        <!-- Auth Screen (Now hidden by default for bypass) -->
+        <div id="auth-screen" class="view">
+            <div class="auth-container">
+                <div class="auth-card" style="text-align: center; max-width: 320px; width: 100%; padding: 20px; background: var(--bg-surface); border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">🛡️</div>
+                    <h2 style="margin-bottom: 5px;">The Claims Experience</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.9rem;">v2.0.0 (Agent Suite)</p>
+                    
+                    <form id="login-form">
+                        <div class="input-group" style="text-align: center;">
+                            <label for="pin" style="display: block; margin-bottom: 10px;">Enter 8-Digit Secure PIN</label>
+                            <input type="password" id="pin" required maxlength="12" pattern="[0-9]*" inputmode="numeric" placeholder="••••••••" style="font-size: 1.8rem; text-align: center; letter-spacing: 0.2em; width: 100%; background: var(--bg-surface-light); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; padding: 10px;">
+                        </div>
+                        <p id="auth-error" style="color: var(--danger-color); font-size: 0.85rem; margin-top: 10px; margin-bottom: 15px; min-height: 1.2em;"></p>
+                        
+                        <p id="db-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 20px; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.2);">
+                            🛰️ Checking secure link...
+                        </p>
+                        
+                        <button type="submit" class="btn btn-primary btn-block btn-large" style="width: 100%; padding: 15px; font-weight: bold;">UNLOCK APP</button>
+                    </form>
+
+                    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed var(--border-color);">
+                        <button onclick="app.hardRefresh()" style="background: none; border: none; color: var(--text-secondary); font-size: 0.75rem; text-decoration: underline; cursor: pointer; opacity: 0.7;">
+                            Stuck? Clear All Cache & Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+         <!-- Main App Content (Clean 3-Row Grid Shell) -->
+        <div id="main-app" class="app-layout hidden">
+            <!-- Row 1: Header -->
+            <header class="app-header">
+                <div class="header-title" style="display: flex; align-items: baseline; gap: 8px;">
+                    <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">The Claims Experience</span>
+                    <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75rem; opacity: 0.8;">
+                        <span id="sync-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #4caf50; display: inline-block;"></span>
+                        <span id="sync-status-text">Connected</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" onclick="app.syncAllData()" title="Sync Data">
+                        <span class="material-symbols-outlined">sync</span>
+                    </button>
+                    <button class="icon-btn" onclick="app.navigate('settings')" title="Settings">
+                        <span class="material-symbols-outlined">settings</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Row 2: Main Scroller -->
+            <main class="app-main">
+                <div id="offline-banner" class="hidden">⚠️ Offline Mode - Working from Cache</div>
+                
+                <!-- Pull to Refresh Indicator -->
+                <div id="ptr-indicator" class="ptr-indicator">
+                    <span class="material-symbols-outlined">sync</span>
+                </div>
+
+                <!-- Home View -->
+
+                <section id="view-home" class="view active-view">
+                    <div class="quick-actions">
+                        <button class="action-card" onclick="app.navigate('water-loss')" style="grid-column: span 2; background: linear-gradient(135deg, rgba(0,122,255,0.1), rgba(0,200,255,0.05)); border: 1px solid rgba(0,122,255,0.3);">
+                            <div class="action-icon water-icon" style="background: linear-gradient(135deg, #00C6FF, #0072FF); color: white; margin: 0 auto 10px auto;">
+                                <span class="material-symbols-outlined">water_drop</span>
+                            </div>
+                            <h3 style="color: #00A6FF; font-size: 1.1rem; margin-bottom: 4px;">Water Loss Agent</h3>
+                            <p style="font-size: 0.85rem; opacity: 0.8;">Dictate • Photos • Estimate</p>
+                        </button>
+                        <button class="action-card" onclick="app.navigate('voice-note')">
+                            <div class="action-icon record-icon">
+                                <span class="material-symbols-outlined">mic</span>
+                            </div>
+                            <h3>Record Voicemail</h3>
+                            <p>Transcribe & Task</p>
+                        </button>
+                        
+                        <button class="action-card" onclick="app.navigate('dictate-summary')">
+                            <div class="action-icon dictation-icon">
+                                <span class="material-symbols-outlined">assignment</span>
+                            </div>
+                            <h3>Inspection Summary</h3>
+                            <p>Dictate & Email</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.openNewTaskModal()">
+                            <div class="action-icon task-icon">
+                                <span class="material-symbols-outlined">add_task</span>
+                            </div>
+                            <h3>Quick Task</h3>
+                            <p>Text or Voice</p>
+                        </button>
+                        
+                        <button class="action-card" onclick="app.navigate('vision')" style="grid-column: span 1;">
+                            <div class="action-icon vision-icon" style="background: var(--info-color); color: white;">
+                                <span class="material-symbols-outlined">center_focus_strong</span>
+                            </div>
+                            <h3>AI Vision</h3>
+                            <p>Damage Scan</p>
+                        </button>
+                        <button class="action-card" onclick="app.navigate('policy-chat')" style="grid-column: span 1;">
+                            <div class="action-icon doc-icon" style="background: var(--warning-color); color: white;">
+                                <span class="material-symbols-outlined">description</span>
+                            </div>
+                            <h3>Policy Chat</h3>
+                            <p>PDF AI Analyst</p>
+                        </button>
+                        <button class="action-card" onclick="app.navigate('material-id')" style="grid-column: span 1;">
+                            <div class="action-icon material-icon" style="background: #607d8b; color: white;">
+                                <span class="material-symbols-outlined">category</span>
+                            </div>
+                            <h3>Material ID</h3>
+                            <p>Siding & Soffit</p>
+                        </button>
+                        
+                        <button class="action-card" onclick="app.navigate('ctre-translator')" style="grid-column: span 1;">
+                            <div class="action-icon estimate-icon" style="background: linear-gradient(135deg, #e91e63, #ff4081); color: white;">
+                                <span class="material-symbols-outlined">compare_arrows</span>
+                            </div>
+                            <h3>Estimate Translator</h3>
+                            <p>CTRE vs SFE Gap</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('copilot-chat')" style="grid-column: span 1;">
+                            <div class="action-icon" style="background: linear-gradient(135deg, #673ab7, #9c27b0); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto;">
+                                <span class="material-symbols-outlined">forum</span>
+                            </div>
+                            <h3>Copilot Chat</h3>
+                            <p>State Farm Guru</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('playbooks')" style="grid-column: span 1;">
+                            <div class="action-icon" style="background: linear-gradient(135deg, #009688, #4caf50); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto;">
+                                <span class="material-symbols-outlined">library_books</span>
+                            </div>
+                            <h3>Playbook Hub</h3>
+                            <p>Procedures & Guides</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('drafts')" style="grid-column: span 1;">
+                            <div class="action-icon drafts-icon" style="background: #20c997; color: white;">
+                                <span class="material-symbols-outlined">folder_open</span>
+                            </div>
+                            <h3>Estimate Drafts</h3>
+                            <p>Stored Codes</p>
+                        </button>
+                    </div> <!-- End Quick Actions -->
+                </section> <!-- End View Home -->
+
+
+                    <!-- Field Hub View (OneClick-Lite) -->
+                    <section id="view-field-hub" class="view">
+                        <div class="view-content voice-container">
+                            <h2>Field Hub</h2>
+                            <p class="subtitle">Quick-access zip-aware tools (OneClick-Lite)</p>
+                            
+                            <!-- Global Zip Input -->
+                            <div class="wl-hub" style="margin-top: 15px; width: 100%;">
+                                <div style="display: flex; gap: 10px; align-items: center; background: var(--bg-surface-light); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                    <span class="material-symbols-outlined" style="color: var(--primary-color);">location_on</span>
+                                    <input type="text" id="hub-zip-input" placeholder="Enter Zip Code..." maxlength="5" style="background: transparent; border: none; font-size: 1.2rem; color: var(--text-primary); font-weight: bold; width: 100%; outline: none;" onchange="app.lookupZipIntelligence(this.value)">
+                                    <button class="btn-micro" id="btn-refresh-hub" onclick="app.lookupZipIntelligence(document.getElementById('hub-zip-input').value)">
+                                        <span class="material-symbols-outlined" style="font-size: 18px;">sync</span>
+                                    </button>
+                                </div>
+                                
+                                <div id="hub-jurisdiction-card" class="hidden" style="margin-top: 15px; background: rgba(0,255,122,0.05); border: 1px solid rgba(0,255,122,0.2); border-radius: 12px; padding: 15px; text-align: left;">
+                                    <h4 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #4caf50; font-size: 0.9rem;">
+                                        <span class="material-symbols-outlined" style="font-size: 18px;">gavel</span> JURISDICTION PROFILE
+                                    </h4>
+                                    <div id="hub-jurisdiction-info" style="margin-top: 10px; font-size: 0.9rem;">
+                                        <!-- AHJ Info Injected -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tools Grid -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 25px; width: 100%;">
+                                <button class="wl-action-btn" onclick="app.openCodeBreaker()">
+                                    <span class="material-symbols-outlined" style="font-size: 32px; color: #ff9800;">gavel</span>
+                                    <span style="font-weight: 600;">Code Breaker</span>
+                                </button>
+                                <button class="wl-action-btn" onclick="app.navigate('material-id')">
+                                    <span class="material-symbols-outlined" style="font-size: 32px; color: #2196f3;">category</span>
+                                    <span style="font-weight: 600;">Material ID</span>
+                                </button>
+                                <button class="wl-action-btn" onclick="app.openPitchGauge()">
+                                    <span class="material-symbols-outlined" style="font-size: 32px; color: #607d8b;">architecture</span>
+                                    <span style="font-weight: 600;">Pitch Gauge</span>
+                                </button>
+                                <button class="wl-action-btn" onclick="app.navigate('ctre-translator')">
+                                    <span class="material-symbols-outlined" style="font-size: 32px; color: #e91e63;">compare_arrows</span>
+                                    <span style="font-weight: 600;">Pricing Review</span>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Water Mitigation View -->
+                    <section id="view-water-mit" class="view">
+                        <div class="view-content voice-container">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <div>
+                                    <h2 style="margin: 0;">Mitigation Dashboard</h2>
+                                    <p class="subtitle">ANSI/IICRC S500 2021 Scribe</p>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-micro" onclick="waterMit.emailReport()" title="Email Report">
+                                        <span class="material-symbols-outlined">mail</span>
+                                    </button>
+                                    <button class="btn-micro" onclick="waterMit.generatePDF()" title="Download PDF">
+                                        <span class="material-symbols-outlined">download</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Wizard Status Overlay -->
+                            <div id="mit-wizard-overlay" class="hidden" style="margin-top: 15px; width: 100%; padding: 15px; background: var(--primary-color); color: white; border-radius: 12px; display: flex; align-items: center; gap: 15px; animation: pulse 2s infinite;">
+                                <span class="material-symbols-outlined">mic</span>
+                                <div style="flex: 1;">
+                                    <div id="mit-wizard-step" style="font-size: 0.75rem; opacity: 0.8; text-transform: uppercase; font-weight: bold;">Step 1</div>
+                                    <div id="mit-wizard-prompt" style="font-weight: 600;">Listening for Claim ID...</div>
+                                </div>
+                                <button onclick="waterMit.stopWizard()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">Cancel</button>
+                            </div>
+
+                            <div class="wl-hub" style="margin-top: 15px; width: 100%;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: var(--bg-surface-light); border-radius: 12px 12px 0 0; border: 1px solid var(--border-color); border-bottom: none;">
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                                        <span class="material-symbols-outlined" style="font-size: 16px;">label</span>
+                                        CLAIM: <span id="mit-claim-display" style="color: var(--text-primary); font-weight: bold;">NOT SET</span>
+                                    </div>
+                                    <button class="btn-micro" onclick="waterMit.startWizard()" style="background: var(--primary-color); color: white; border: none; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">
+                                        🎙️ START SCRIBE
+                                    </button>
+                                </div>
+                                
+                                <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 0 0 12px 12px; background: var(--bg-surface);">
+                                    <table class="review-table" style="min-width: 600px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Room</th>
+                                                <th>Dims</th>
+                                                <th>SF</th>
+                                                <th>Class</th>
+                                                <th>% Wet</th>
+                                                <th>AMs</th>
+                                                <th>Dehu</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="mitigation-body">
+                                            <!-- Injected Rooms -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div id="mit-totals-bar" style="margin-top: 15px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div style="background: rgba(0,255,122,0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.7rem; color: var(--success-color); font-weight: bold;">TOTAL AIRMOVERS</div>
+                                    <div id="total-am-display" style="font-size: 1.5rem; font-weight: 800;">0</div>
+                                </div>
+                                <div style="background: rgba(0,122,255,0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.7rem; color: #007aff; font-weight: bold;">TOTAL DEHU PINTS</div>
+                                    <div id="total-dehu-display" style="font-size: 1.5rem; font-weight: 800;">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Code Breaker Modal -->
+                    <div id="modal-code-breaker" class="modal hidden">
+                        <div class="modal-content" style="max-height: 85vh; display: flex; flex-direction: column;">
+                            <div class="modal-header">
+                                <h3>The Code Breaker</h3>
+                                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+                            </div>
+                            <div class="modal-body" style="flex: 1; overflow-y: auto;">
+                                <div id="code-chat-history" style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px;">
+                                    <div style="background: var(--bg-surface-light); padding: 12px; border-radius: 8px; font-size: 0.9rem; opacity: 0.8;">
+                                        Enter a Zip Code in the Field Hub first to get localized building code answers (IRC/IBC).
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="padding: 15px; border-top: 1px solid var(--border-color); display: flex; gap: 10px;">
+                                <input type="text" id="code-query-input" placeholder="Ask about a code (e.g. drip edge)..." style="flex: 1; background: var(--bg-surface-light); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; color: var(--text-primary);">
+                                <button class="btn-micro" onclick="app.askCodeConsultant()" style="width: 45px; height: 45px; border-radius: 50%; background: var(--primary-color); color: white;">
+                                    <span class="material-symbols-outlined">send</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Removed Active Claims Widget for stability -->
+                </section>
+
+                <!-- Tasks View -->
+                <section id="view-tasks" class="view">
+                    <div class="view-content">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin:0;">My Tasks</h2>
+                            <button class="btn btn-secondary btn-small" onclick="app.generateBatchReport()" style="display:flex; align-items:center; gap:5px; font-size:0.75rem;">
+                                <span class="material-symbols-outlined" style="font-size:16px;">bolt</span> Priority Report
+                            </button>
+                        </div>
+                        <ul id="tasks-list" class="task-list">
+                            <!-- Tasks injected here -->
+                        </ul>
+                    </div>
+                    <!-- FAB for adding task -->
+                    <button class="fab" onclick="app.openNewTaskModal()">
+                        <span class="material-symbols-outlined">add</span>
+                    </button>
+                </section>
+
+                <!-- Claims View -->
+                <section id="view-claims" class="view">
+                    <div class="view-content">
+                        <h2>Claims</h2>
+                        <ul id="claims-list" class="claim-list">
+                            <!-- Claims injected here -->
+                        </ul>
+                    </div>
+                    <!-- FAB for adding claim -->
+                    <button class="fab" onclick="app.openNewClaimModal()">
+                        <span class="material-symbols-outlined">add</span>
+                    </button>
+                </section>
+                
+                <!-- Voice Note View -->
+                <section id="view-voice-note" class="view">
+                     <div class="voice-container">
+                         <h2>Record Voicemail</h2>
+                         <div class="recording-status">
+                             <div class="pulse-ring hidden"></div>
+                             <span class="material-symbols-outlined mic-large">mic</span>
+                         </div>
+                         <p id="voice-status-text">Tap to start recording</p>
+                         
+                         <div class="transcript-box">
+                             <textarea id="live-transcript" placeholder="Transcript will appear here..." readonly></textarea>
+                         </div>
+                         
+                         <div class="voice-actions">
+                             <button id="btn-toggle-record" class="btn btn-primary btn-large">Start Recording</button>
+                             <div id="post-record-actions" class="hidden" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                                 <button class="btn btn-secondary" onclick="alert('Claim selection to be added')">Save to Claim</button>
+                                 <button class="btn btn-success" onclick="app.submitVoicemailToBrain()" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                     <span class="material-symbols-outlined">psychology</span> Extract Task via Brain
+                                 </button>
+                                 <button class="btn btn-primary" onclick="app.sendEmail('voicemail')">Email Transcript</button>
+                             </div>
+                         </div>
+                     </div>
+                </section>
+                
+                <!-- Dictate Summary View -->
+                <section id="view-dictate-summary" class="view">
+                     <div class="voice-container">
+                         <h2>Inspection Summary</h2>
+                         <p class="subtitle">Dictate findings while walking</p>
+                         
+                         <div class="recording-status">
+                             <div class="pulse-ring hidden" id="summary-pulse-ring"></div>
+                             <span class="material-symbols-outlined mic-large">assignment_add</span>
+                         </div>
+                         <p id="summary-status-text" style="text-align:center; margin-bottom: 10px;">Tap to start dictating</p>
+                         
+                         <div class="voice-actions" style="margin-bottom: 15px;">
+                             <button id="btn-summary-record" class="btn btn-primary btn-block" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                 <span class="material-symbols-outlined">mic</span> Start Dictating
+                             </button>
+                         </div>
+
+                         <div class="transcript-box large">
+                             <textarea id="summary-transcript" placeholder="Begin speaking. Exterior damages, interior, etc."></textarea>
+                         </div>
+                         
+                         <div id="xactimate-output-container" class="hidden" style="margin-top: 15px;">
+                             <h3>Suggested Xactimate Codes</h3>
+                             <div class="transcript-box">
+                                 <textarea id="xactimate-transcript" placeholder="Xactimate codes will appear here..." style="height: 120px; font-family: monospace;"></textarea>
+                             </div>
+                         </div>
+                         
+                         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                             <button id="btn-extract-xactimate" class="btn btn-secondary" onclick="app.extractXactimateCodes()" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                 <span class="material-symbols-outlined">psychology</span> Extract Xactimate Codes
+                             </button>
+                             <button id="btn-send-summary" class="btn btn-primary btn-block" onclick="app.sendEmail('summary')">Send Summary Email</button>
+                         </div>
+                     </div>
+                </section>
+
+                <!-- Material ID View -->
+                <section id="view-material-id" class="view">
+                    <div class="vision-container">
+                        <h2>Material Identifier</h2>
+                        <p class="subtitle">Identify siding, soffit, and fascia</p>
+                        
+                        <div id="material-camera-container" class="camera-preview">
+                            <div class="camera-placeholder">
+                                <span class="material-symbols-outlined" style="font-size: 4rem; color: var(--text-secondary);">category</span>
+                                <p>Take a clear photo of the material profile</p>
+                            </div>
+                            <img id="material-photo-preview" class="hidden">
+                        </div>
+
+                        <div class="vision-actions">
+                            <input type="file" id="material-file-input" accept="image/*" capture="environment" class="hidden" onchange="app.handleMaterialPhoto(event)">
+                            <button class="btn btn-primary btn-block" onclick="document.getElementById('material-file-input').click()">
+                                <span class="material-symbols-outlined">photo_camera</span> Snap Photo
+                            </button>
+                            <button id="btn-analyze-material" class="btn btn-secondary btn-block hidden" onclick="app.analyzeMaterial()">
+                                <span class="material-symbols-outlined">search</span> Identify Material
+                            </button>
+                        </div>
+
+                        <div id="material-results" class="results-container hidden">
+                            <div class="results-card">
+                                <h3>Identification Results</h3>
+                                <div id="material-info" class="material-info">
+                                    <!-- Results injected here -->
+                                </div>
+                                <div id="availability-section" class="availability-section hidden">
+                                    <hr>
+                                    <h4>Availability Check</h4>
+                                    <div id="availability-status" class="availability-status">
+                                        <!-- Availability findings injected here -->
+                                    </div>
+                                </div>
+                                <div class="result-actions" style="margin-top: 15px; display: flex; gap: 10px;">
+                                    <button id="btn-check-availability" class="btn btn-info btn-block" onclick="app.checkAvailability()">
+                                        <span class="material-symbols-outlined">event_busy</span> Check for Discontinued Status
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="material-loading" class="loading-overlay hidden">
+                            <div class="spinner"></div>
+                            <p id="material-loading-text">Analyzing material profile...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Local Wonders View -->
+                <section id="view-local-wonders" class="view">
+                    <div class="view-content">
+                        <h2>Local Wonders</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.9rem;">
+                            Discover eccentric, historical, or unusual points of interest near your current location. Powered by AI.
+                        </p>
+                        
+                        <button class="btn btn-primary btn-block" id="btn-discover-wonders" onclick="app.discoverWonders()" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                            <span class="material-symbols-outlined">explore</span> Find Nearby Locations
+                        </button>
+
+                        <div id="wonders-loading" class="hidden" style="text-align: center; margin-top: 20px; color: var(--text-secondary);">
+                            <span class="material-symbols-outlined" style="animation: spin 2s linear infinite; display: inline-block; font-size: 32px;">sync</span>
+                            <p style="margin-top: 10px;">Scanning terrain & consulting AI...</p>
+                        </div>
+
+                        <ul id="wonders-list" class="task-list" style="margin-top: 20px;">
+                            <!-- Injected by app.js -->
+                        </ul>
+                    </div>
+                </section>
+                
+                <!-- Settings View -->
+                <section id="view-settings" class="view">
+                    <div class="view-content voice-container">
+                        <h2>Settings</h2>
+                        <p class="subtitle">App configuration & sync</p>
+                        
+                        <!-- Policy Sync Section -->
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--primary-color); box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                <span class="material-symbols-outlined" style="color: var(--primary-color);">cloud_sync</span>
+                                <h3 style="font-size: 1.1rem; margin: 0;">Policy Management & Sync</h3>
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 15px; text-align: left;">
+                                Upload a policy PDF from your workstation to access it instantly via the "Policy Chat" on your phone.
+                            </p>
+                            
+                            <input type="file" id="policy-upload-input" accept="application/pdf" style="display: none;" onchange="app.handleStealthPolicyUpload(event)">
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <button class="btn btn-primary" onclick="document.getElementById('policy-upload-input').click()" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; font-size: 0.9rem;">
+                                    <span class="material-symbols-outlined">upload_file</span> PDF Sync
+                                </button>
+                                <button class="btn btn-success" onclick="app.openCameraScan()" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; font-size: 0.9rem;">
+                                    <span class="material-symbols-outlined">photo_camera</span> Camera Scan
+                                </button>
+                            </div>
+
+                            <div class="input-group" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                                <label>Manual Paste (100+ pages)</label>
+                                <input type="text" id="paste-policy-name" placeholder="Policy Name (e.g. State Farm)" style="margin-bottom: 8px;">
+                                <textarea id="paste-policy-text" placeholder="Paste the entire policy text here if you can copy it from the workstation..." style="height: 100px; font-size: 0.8rem;"></textarea>
+                                <button class="btn btn-secondary btn-block" onclick="app.savePastedPolicy()" style="margin-top: 10px;">Save Pasted Text</button>
+                            </div>
+                            
+                            <div id="stealth-upload-status" class="hidden" style="margin-top: 15px; color: var(--success-color); font-weight: bold; font-size: 0.9rem;">
+                                <span class="material-symbols-outlined" style="vertical-align: middle; animation: spin 2s linear infinite;">sync</span> 
+                                <span id="status-text">Syncing...</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme & Feature Toggles -->
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">App Preferences</h3>
+                            
+                            <div class="setting-item">
+                                <span>Dark Mode</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-dark-mode" checked onchange="app.toggleTheme(this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="setting-item">
+                                <span>Stealth Mode (Blur Claims)</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-stealth-mode" onchange="app.toggleStealth(this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="setting-item">
+                                <span>Haptic Feedback</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-haptic" onchange="app.toggleHaptic(this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <button class="btn btn-secondary btn-block" onclick="app.checkForUpdate()" style="margin-top: 15px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <span class="material-symbols-outlined">update</span> Check for Updates
+                            </button>
+                        </div>
+                        
+                        <!-- AI Brain Card -->
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">AI Brain Configuration</h3>
+                            <div class="input-group">
+                                <label for="setting-api-key">xAI Grok API Key</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="password" id="setting-api-key" placeholder="xai-..." style="flex: 1;">
+                                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="app.saveKeyToCloud('grok')" title="Persist Grok key">
+                                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">cloud_upload</span> Sync
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="input-group" style="margin-top: 15px;">
+                                <label for="setting-gemini-key">Google Gemini API Key</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="password" id="setting-gemini-key" placeholder="AIza..." style="flex: 1;">
+                                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="app.saveKeyToCloud('gemini')" title="Persist Gemini key">
+                                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">cloud_upload</span> Sync
+                                    </button>
+                                </div>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Used for high-speed video scans and multi-page estimates.</small>
+                            </div>
+                            <button class="btn btn-secondary btn-block" onclick="app.saveApiKeys()" style="margin-top: 10px;">Save Keys Locally</button>
+                        </div>
+                        
+                        <!-- Antigravity Bridge Section -->
+                        <div style="margin-top: 20px; background: linear-gradient(135deg, var(--bg-surface-light), #1a1a2e); padding: 20px; border-radius: 12px; border: 1px solid var(--primary-color); box-shadow: 0 8px 16px rgba(0,0,0,0.4);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                <span class="material-symbols-outlined" style="color: var(--primary-color); font-size: 28px;">cell_tower</span>
+                                <h3 style="font-size: 1.2rem; margin: 0; letter-spacing: 0.5px;">Antigravity Remote Bridge</h3>
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px; text-align: left; line-height: 1.4;">
+                                Link your phone to control this workspace from the field. Use your phone as a remote mic, camera, and status monitor.
+                            </p>
+                            
+                            <div style="background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px dashed var(--border-color); text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Your Pairing Code</div>
+                                <div id="display-pairing-code" style="font-size: 2.2rem; font-weight: 800; color: var(--primary-color); letter-spacing: 5px; font-family: monospace;">------</div>
+                            </div>
+                            
+                            <button class="btn btn-outline btn-block" onclick="app.checkForUpdate()" style="margin-top: 15px; border: 1px solid var(--border-color); font-size: 0.8rem; background: transparent; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">sync</span> Reset Bridge Connection
+                            </button>
+                        </div>
+                        
+                        <!-- Feedback & Privacy Card -->
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Support & Privacy</h3>
+                            <button class="btn btn-secondary btn-block" onclick="document.getElementById('modal-report-bug').classList.remove('hidden')" style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom: 10px;">
+                                <span class="material-symbols-outlined">bug_report</span> Report Issue / Feedback
+                            </button>
+                            <button class="btn btn-danger btn-block" onclick="app.wipeAllData()" style="display:flex; align-items:center; justify-content:center; gap:8px; background: #442222;">
+                                <span class="material-symbols-outlined">delete_forever</span> Wipe All Local Data
+                            </button>
+                        </div>
+
+                        <!-- Share App / QR Code Card -->
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center;">
+                            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Share This App</h3>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 15px;">Scan this QR code on another device to access the claims workflow app.</p>
+                            <div id="qr-code-container" style="background: white; padding: 15px; border-radius: 12px; display: inline-block; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                                <img id="app-qr-code" src="" alt="App QR Code" style="width: 180px; height: 180px; display: block;">
+                            </div>
+                            <div id="app-url-display" style="font-size: 0.75rem; color: var(--primary-color); word-break: break-all; opacity: 0.7;"></div>
+                        </div>
+                        
+                         <div style="margin-top: 30px; text-align: center; color: var(--text-secondary); font-size: 0.75rem;">
+                             App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.9.1 (Remote-Ready)</span><br>
+                             Engine: Grok-4.20 Field Expert
+                         </div>
+                    </div>
+                </section>
+
+                <!-- AI Brain View -->
+                <section id="view-brain" class="view">
+                    <div class="voice-container">
+                        <h2>AI Assistant</h2>
+                        <p class="subtitle">Powered by xAI Grok</p>
+                        <div class="recording-status">
+                            <span class="material-symbols-outlined mic-large" style="color: var(--primary-color);">psychology</span>
+                        </div>
+                        <p id="brain-status-text" style="text-align:center;">Tap Mic, Speak Command.</p>
+                        
+                        <div class="transcript-box">
+                            <textarea id="brain-transcript" placeholder="Example: 'Create a task to follow up on the estimate'" style="height: 120px;"></textarea>
+                            <div id="brain-loading" class="hidden" style="text-align:center; padding: 10px; color: var(--primary-color); font-weight: bold;">
+                                <span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Processing Command...
+                            </div>
+                        </div>
+                        
+                        <div class="voice-actions" style="margin-top: 15px;">
+                            <button id="btn-brain-record" class="btn btn-primary btn-large" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <span class="material-symbols-outlined">mic</span> Voice Command
+                            </button>
+                            <button id="btn-brain-submit" class="btn btn-secondary" onclick="app.submitBrainCommand()">Send Text</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Scan Estimate View -->
+                <!-- Copilot Chat View -->
+                <section id="view-copilot-chat" class="view desk-view">
+                    <div class="view-content" style="display:flex; flex-direction:column; height: 100%;">
+                        <div style="background: linear-gradient(135deg, rgba(103, 58, 183, 0.2), rgba(156, 39, 176, 0.1)); padding: 20px; border-radius: 12px; border: 1px solid rgba(156, 39, 176, 0.3); margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: #d05ce3; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-outlined">forum</span> Copilot Chat
+                            </h2>
+                            <p class="subtitle" style="margin-top: 5px; opacity: 0.8;">Ask the AI Brain any State Farm handling questions, rules, or procedural guidelines.</p>
+                        </div>
+                        
+                        <div id="copilot-chat-history" style="flex: 1; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px;">
+                            <div style="align-self: flex-start; background: var(--bg-surface-light); padding: 10px 15px; border-radius: 12px; border-bottom-left-radius: 2px; max-width: 85%;">
+                                <strong>SF Copilot:</strong> Ask me anything regarding property procedures!
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="copilot-chat-input" placeholder="e.g., What are the rules on matching siding?" style="flex: 1; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary);">
+                            <button class="btn btn-primary" onclick="app.sendCopilotMessage()" style="border-radius: 12px; padding: 0 20px;">
+                                <span class="material-symbols-outlined">send</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CTRE Translator View -->
+                <section id="view-ctre-translator" class="view desk-view">
+                    <div class="view-content voice-container">
+                        <h2>Estimate Translator</h2>
+                        <p class="subtitle">Convert or Compare Contractor Estimates (CTRE) to Xactimate (SFE)</p>
+                        
+                        <div style="display:flex; justify-content:center; gap: 15px; margin-top: 15px; background:var(--bg-surface-light); padding:10px; border-radius:8px; width: 100%;">
+                            <label style="display:flex; align-items:center; gap:5px; font-size:0.9rem; cursor:pointer; font-weight:bold;">
+                                <input type="radio" name="ctre-mode" value="translate" checked onchange="app.toggleCtreMode()"> 
+                                <span class="material-symbols-outlined" style="font-size:18px;">receipt_long</span> Translate
+                            </label>
+                            <label style="display:flex; align-items:center; gap:5px; font-size:0.9rem; cursor:pointer; font-weight:bold;">
+                                <input type="radio" name="ctre-mode" value="compare" onchange="app.toggleCtreMode()"> 
+                                <span class="material-symbols-outlined" style="font-size:18px;">compare_arrows</span> Compare & Gap
+                            </label>
+                        </div>
+
+                        <div class="wl-hub" style="margin-top: 20px; width: 100%;">
+                            <div class="wl-actions-grid" id="ctre-inputs-grid">
+                                <button class="wl-action-btn" onclick="document.getElementById('ctre-file-input').click()">
+                                    <span class="material-symbols-outlined">document_scanner</span>
+                                    <span style="font-weight:600; font-size:0.9rem;">Upload CTRE</span>
+                                    <input type="file" id="ctre-file-input" accept="image/*,application/pdf" multiple style="display: none;" onchange="app.handleCtreUpload(event, 'ctre')">
+                                </button>
+                                
+                                <button class="wl-action-btn" id="btn-video-ctre" onclick="app.startVideoScan('ctre')" style="border: 2px solid var(--accent-color);">
+                                    <span class="material-symbols-outlined" style="color: var(--accent-color);">video_camera_back</span>
+                                    <span style="font-weight:600; font-size:0.9rem;">Video Scan CTRE</span>
+                                </button>
+
+                                <button class="wl-action-btn hidden" id="sfe-upload-btn" onclick="document.getElementById('sfe-file-input').click()">
+                                    <span class="material-symbols-outlined">add_photo_alternate</span>
+                                    <span style="font-weight:600; font-size:0.9rem;">Upload SFE</span>
+                                    <input type="file" id="sfe-file-input" accept="image/*,application/pdf" multiple style="display: none;" onchange="app.handleCtreUpload(event, 'sfe')">
+                                </button>
+
+                                <button class="wl-action-btn hidden" id="sfe-video-btn" onclick="app.startVideoScan('sfe')" style="border: 2px solid var(--accent-color);">
+                                    <span class="material-symbols-outlined" style="color: var(--accent-color);">video_file</span>
+                                    <span style="font-weight:600; font-size:0.9rem;">Video Scan SFE</span>
+                                </button>
+                            </div>
+                            
+                            <div id="ctre-preview-container" class="hidden" style="margin-top: 15px; text-align:left;">
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <p id="ctre-status-text" style="font-size: 0.85rem; color: var(--success-color);"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> CTRE-Scan: <span id="ctre-photo-count">0</span> pages</p>
+                                    <button class="icon-btn" onclick="app.clearPhotos('ctre')" style="color: var(--danger-color); font-size: 0.8rem;">[Clear]</button>
+                                </div>
+                                <div id="sfe-status-area" class="hidden" style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                                    <p id="sfe-status-text" style="font-size: 0.85rem; color: var(--success-color);"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> SFE-Scan: <span id="sfe-photo-count">0</span> pages</p>
+                                    <button class="icon-btn" onclick="app.clearPhotos('sfe')" style="color: var(--danger-color); font-size: 0.8rem;">[Clear]</button>
+                                </div>
+                                
+                                <button id="btn-process-ctre" class="btn btn-primary btn-block btn-large pulse hidden" style="margin-top: 15px;" onclick="app.processCtre()">
+                                    Generate Xactimate Codes
+                                </button>
+                            </div>
+                            
+                            <div id="ctre-results-area" class="hidden wl-output-container" style="text-align: left;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary-color);">Review & Verify Items</h3>
+                                    <span class="status-indicator status-verified" title="Exact match found in dictionary"></span>
+                                </div>
+                                <div id="ctre-results-text" style="margin:0;">
+                                    <!-- Table will be injected here by app.renderCorrelatedResults -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Playbook Hub View -->
+                <section id="view-playbooks" class="view desk-view">
+                    <div class="view-content" style="display:flex; flex-direction:column; height: 100%;">
+                        <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(0, 150, 136, 0.1)); padding: 20px; border-radius: 12px; border: 1px solid rgba(76, 175, 80, 0.3); margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: #4caf50; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-outlined">library_books</span> Procedural Playbooks
+                            </h2>
+                            <p class="subtitle" style="margin-top: 5px; opacity: 0.8;">Review step-by-step handling guidelines for specific loss types.</p>
+                        </div>
+                        
+                        <!-- Hub Selection -->
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px;">
+                            <button class="btn btn-secondary" onclick="app.loadPlaybook('water')" style="text-align: left; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><span class="material-symbols-outlined" style="vertical-align: middle; color: #00A6FF; margin-right: 8px;">water_drop</span> Water Loss Guide</span>
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="app.loadPlaybook('wind')" style="text-align: left; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><span class="material-symbols-outlined" style="vertical-align: middle; color: #9c27b0; margin-right: 8px;">air</span> Wind / Hail Guide</span>
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="app.loadPlaybook('fire')" style="text-align: left; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><span class="material-symbols-outlined" style="vertical-align: middle; color: #FF3B30; margin-right: 8px;">local_fire_department</span> Fire / Smoke Guide</span>
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                        </div>
+
+                        <!-- Hub Content Area -->
+                        <div id="playbook-content-area" class="hidden" style="flex: 1; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px;">
+                            <h3 id="playbook-title" style="margin-top: 0; margin-bottom: 15px; color: var(--primary-color);"></h3>
+                            <div id="playbook-checklist" style="display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem; line-height: 1.5;">
+                                <!-- Dynamic check items load here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AI Vision View -->
+                <section id="view-vision" class="view">
+                    <div class="view-content voice-container">
+                        <h2>AI Image Analysis</h2>
+                        <p class="subtitle">Upload a photo for damage recognition or scan receipts</p>
+                        
+                        <div style="display:flex; justify-content:center; gap: 15px; margin-top: 15px; background:var(--bg-surface-light); padding:10px; border-radius:8px;">
+                            <label style="display:flex; align-items:center; gap:5px; font-size:0.9rem; cursor:pointer; font-weight:bold;">
+                                <input type="radio" name="vision-mode" value="damage" checked> 
+                                <span class="material-symbols-outlined" style="font-size:18px;">home_work</span> Damage Scan
+                            </label>
+                            <label style="display:flex; align-items:center; gap:5px; font-size:0.9rem; cursor:pointer; font-weight:bold;">
+                                <input type="radio" name="vision-mode" value="ale"> 
+                                <span class="material-symbols-outlined" style="font-size:18px;">receipt_long</span> ALE/Receipt Scan
+                            </label>
+                        </div>
+
+                        <div style="margin-top: 20px; text-align: center;">
+                            <input type="file" id="vision-file-input" accept="image/*" multiple style="display: none;" onchange="app.handleVisionImageSelect(event)">
+                            <button class="btn btn-primary btn-large" onclick="document.getElementById('vision-file-input').click()" style="display:flex; align-items:center; justify-content:center; gap:8px; margin: 0 auto;">
+                                <span class="material-symbols-outlined">add_photo_alternate</span> Select Photos
+                            </button>
+                            
+                            <div id="vision-preview-container" class="hidden" style="margin-top: 20px;">
+                                <img id="vision-preview-img" src="" alt="Selected Photo" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <button id="btn-analyze-vision" class="btn btn-success btn-block" onclick="app.analyzePhoto()" style="margin-top: 15px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                    <span class="material-symbols-outlined">psychology</span> Analyze Image
+                                </button>
+                            </div>
+                            
+                            <div id="vision-output-container" class="hidden" style="margin-top: 20px; text-align: left;">
+                                <h3>AI Analysis Results</h3>
+                                <div class="transcript-box">
+                                    <textarea id="vision-transcript" readonly style="height: 150px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Policy Chat View -->
+                <section id="view-policy-chat" class="view">
+                    <div class="view-content voice-container">
+                        <h2>Policy Chat</h2>
+                        <p class="subtitle">Ask questions against synced policies</p>
+                        
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div class="input-group">
+                                <label>1. Select Synced Policy</label>
+                                <select id="policy-select">
+                                    <option value="">-- Select a Policy --</option>
+                                </select>
+                                <div id="policy-load-status" style="margin-top: 5px; font-size: 0.9em; color: var(--primary-color);"></div>
+                            </div>
+                            
+                            <div class="input-group" style="margin-top: 15px;">
+                                <label>2. Ask your question</label>
+                                <textarea id="policy-question" placeholder="e.g., Does this policy cover wind damage to a standalone fence?"></textarea>
+                            </div>
+                            
+                            <button id="btn-policy-ask" class="btn btn-primary btn-block" onclick="app.askPolicyQuestion()" style="margin-top: 10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <span class="material-symbols-outlined">forum</span> Ask AI
+                            </button>
+                        </div>
+                        
+                        <div id="policy-answer-container" class="hidden" style="margin-top: 20px;">
+                            <h3>Answer</h3>
+                            <div class="transcript-box">
+                                <textarea id="policy-answer" readonly style="height: 150px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Weather View -->
+                <section id="view-weather" class="view">
+                    <div class="view-content voice-container">
+                        <h2>Date of Loss Weather</h2>
+                        <p class="subtitle">Retrieve historical wind & rain data</p>
+                        
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div class="input-group">
+                                <label>Detailed Address or City, ST</label>
+                                <input type="text" id="weather-address" placeholder="e.g., 123 Main St, Dallas, TX" required>
+                            </div>
+                            <div class="input-group">
+                                <label>Date of Loss</label>
+                                <input type="date" id="weather-date" required>
+                            </div>
+                            
+                            <button id="btn-weather-pull" class="btn btn-primary btn-block" onclick="app.pullWeather()" style="margin-top: 10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <span class="material-symbols-outlined">cloud_sync</span> Pull Weather Data
+                            </button>
+                        </div>
+                        
+                        <div id="weather-output-container" class="hidden" style="margin-top: 20px;">
+                            <h3>Historical Data</h3>
+                            <div class="transcript-box">
+                                <textarea id="weather-output" readonly style="height: 120px; font-family: monospace;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Dictionary View -->
+                <section id="view-dictionary" class="view">
+                    <div class="view-content">
+                        <div class="dictionary-search">
+                            <h2>Xactimate Dictionary</h2>
+                            <p class="subtitle">Search codes via AI or Keyword</p>
+                            <div class="input-group" style="display:flex; gap:10px;">
+                                <input type="text" id="dict-search-input" placeholder="e.g., '3-tab shingle removal' or 'RFG300'" style="flex:1;">
+                                <button class="btn btn-primary" onclick="app.searchDictionary()" style="padding: 12px;"><span class="material-symbols-outlined">search</span></button>
+                            </div>
+                        </div>
+                        
+                        <div id="dict-loading" class="hidden" style="text-align: center; padding: 20px;">
+                            <span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span>
+                            <p>Consulting Xactimate Brain...</p>
+                        </div>
+
+                        <ul id="dict-results" class="dictionary-results task-list">
+                            <!-- Results injected here -->
+                            <li class="empty-state">Search for a material to see codes and descriptions.</li>
+                        </ul>
+                    </div>
+                </section>
+                <!-- Strategy Desk View (Tab 2) -->
+                <section id="view-strategy" class="view">
+                    <div class="quick-actions">
+                        <button class="action-card" onclick="app.navigate('weather')">
+                            <div class="action-icon weather-icon" style="background: var(--primary-color); color: white;">
+                                <span class="material-symbols-outlined">thunderstorm</span>
+                            </div>
+                            <h3>Date of Loss</h3>
+                            <p>Weather History</p>
+                        </button>
+                        
+                        <button class="action-card" onclick="app.navigate('smart-map')">
+                            <div class="action-icon map-icon" style="background: var(--success-color); color: white;">
+                                <span class="material-symbols-outlined">directions_car</span>
+                            </div>
+                            <h3>Smart Map</h3>
+                            <p>Distance & Logistics</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('dictionary')">
+                            <div class="action-icon dict-icon" style="background: var(--warning-color); color: white;">
+                                <span class="material-symbols-outlined">menu_book</span>
+                            </div>
+                            <h3>Xact ID</h3>
+                            <p>Code Reference</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('local-wonders')">
+                            <div class="action-icon explore-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC00); color: white;">
+                                <span class="material-symbols-outlined">explore</span>
+                            </div>
+                            <h3>Local Wonders</h3>
+                            <p>Discovery</p>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Smart Map View -->
+                <section id="view-smart-map" class="view">
+                    <div class="view-content voice-container">
+                        <h2>Smart Map Logistics</h2>
+                        <p class="subtitle">Calculate distance between claims</p>
+                        
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div class="input-group">
+                                <label>Start Address / Current Claim</label>
+                                <input type="text" id="map-origin" placeholder="123 Origin St, City, ST">
+                            </div>
+                            <div class="input-group">
+                                <label>Destination Address / Next Claim</label>
+                                <input type="text" id="map-destination" placeholder="456 Next St, City, ST">
+                            </div>
+                            <button class="btn btn-primary btn-block" onclick="app.calculateDistance()">
+                                <span class="material-symbols-outlined">route</span> Calculate Route
+                            </button>
+                        </div>
+
+                        <div id="map-results" class="hidden" style="margin-top: 20px; padding: 15px; background: rgba(0,122,255,0.1); border-radius: 8px;">
+                            <div id="map-data-text" style="font-size: 1.1rem; text-align: center;"></div>
+                            <button class="btn btn-secondary btn-block" style="margin-top:15px;" id="btn-open-google-maps">
+                                <span class="material-symbols-outlined">map</span> Open in Navigation
+                            </button>
+                        </div>
+                    </div>
+                </section>
+                <!-- Drafts View -->
+                <section id="view-drafts" class="view">
+                    <div class="view-content">
+                        <h2>Estimate Drafts</h2>
+                        <p class="subtitle">Stored Xactimate extractions</p>
+                        
+                        <div id="drafts-loading" class="hidden" style="text-align: center; padding: 20px;">
+                            <span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span>
+                            <p>Fetching drafts...</p>
+                        </div>
+
+                        <ul id="drafts-list" class="task-list" style="margin-top: 20px;">
+                            <!-- Drafts injected here -->
+                            <li class="empty-state">No drafts saved yet.</li>
+                        </ul>
+                    </div>
+                </section>
+                <!-- Water Loss View -->
+                <section id="view-water-loss" class="view">
+                    <div class="view-content voice-container">
+                        <h2>Water Loss Agent</h2>
+                        <p class="subtitle">Convert observations into structured Draft Scopes</p>
+                        
+                        <!-- Top bar: Claim Selection -->
+                        <div style="margin-top: 15px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div class="input-group" style="margin: 0;">
+                                <label>Associate with Active Claim</label>
+                                <select id="water-loss-claim-id">
+                                    <option value="">-- Start New Session --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Optional Quick Procedural Playbook -->
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-secondary btn-block" onclick="document.getElementById('wl-quick-playbook').classList.toggle('hidden')" style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-surface); border: 1px dashed var(--border-color); color:var(--text-secondary); padding: 10px 15px;">
+                                <span><span class="material-symbols-outlined" style="vertical-align: middle; font-size:18px; margin-right:5px; color:#4caf50;">library_books</span> Optional: Show Water Loss Playbook</span>
+                                <span class="material-symbols-outlined">expand_more</span>
+                            </button>
+                            <div id="wl-quick-playbook" class="hidden" style="background:var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); border-top: none; margin-top: -5px; font-size: 0.85rem; line-height: 1.6;">
+                                <h4 style="margin-top:0; margin-bottom:8px; color:var(--primary-color);">Pre-Flight Checklist (Not Mandatory)</h4>
+                                <div><input type="checkbox"> Source identified and stopped?</div>
+                                <div><input type="checkbox"> Category (1, 2, or 3) determined?</div>
+                                <div><input type="checkbox"> Age of home cross-referenced for Asbestos / Lead?</div>
+                                <div><input type="checkbox"> Flooring ITEL sample bagged?</div>
+                                <div><input type="checkbox"> Baseboard removed / tested behind?</div>
+                                <div><input type="checkbox"> Number of fans / dehumidifiers logged?</div>
+                            </div>
+                        </div>
+
+                        <!-- Input Hub -->
+                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                            <input type="file" id="wl-photo-input" accept="image/*" multiple style="display: none;" onchange="waterLossAgent.handlePhotos(event)">
+                            <button class="btn btn-primary" onclick="document.getElementById('wl-photo-input').click()" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 15px 5px; height: 100%;">
+                                <span class="material-symbols-outlined" style="font-size: 28px; margin-bottom: 5px;">add_a_photo</span>
+                                <span style="font-size: 0.75rem;">Photos</span>
+                            </button>
+                            
+                            <button class="btn btn-secondary" onclick="waterLossAgent.toggleDictation()" id="btn-wl-dictate" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 15px 5px; height: 100%; border: 1px solid var(--primary-color);">
+                                <span class="material-symbols-outlined" id="wl-dictate-icon" style="font-size: 28px; margin-bottom: 5px; color: var(--primary-color);">mic</span>
+                                <span style="font-size: 0.75rem;">Dictate</span>
+                            </button>
+
+                            <button class="btn btn-success" onclick="waterLossAgent.openTextInput()" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 15px 5px; height: 100%; background: #607d8b;">
+                                <span class="material-symbols-outlined" style="font-size: 28px; margin-bottom: 5px;">keyboard</span>
+                                <span style="font-size: 0.75rem;">Type</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Interactive Input / Processing State -->
+                        <div id="wl-active-input-area" class="hidden" style="margin-top: 15px;">
+                            <div class="transcript-box large" style="margin-bottom: 10px;">
+                                <textarea id="wl-live-transcript" placeholder="Transcribing or Type observations here..."></textarea>
+                            </div>
+                            <button class="btn btn-primary btn-block" onclick="waterLossAgent.processInput()" id="btn-wl-process">
+                                <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 5px;">psychology</span> Extract to Scope
+                            </button>
+                        </div>
+
+                        <!-- Processing Indicator -->
+                        <div id="wl-loading" class="hidden" style="margin-top: 20px; text-align: center; color: var(--primary-color);">
+                            <span class="material-symbols-outlined" style="font-size: 32px; animation: spin 2s linear infinite;">water_drop</span>
+                            <p style="margin-top: 10px; font-weight: bold;" id="wl-loading-text">Water Loss AI analyzing...</p>
+                        </div>
+
+                        <!-- Draft Scope Display -->
+                        <div id="wl-draft-output-container" class="hidden" style="margin-top: 25px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h3 style="margin: 0; color: #00C6FF; display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-symbols-outlined">receipt_long</span> Draft Scope
+                                </h3>
+                                <div style="display:flex; gap: 8px;">
+                                    <button class="btn btn-secondary btn-small" onclick="waterLossAgent.copyScope()">Copy</button>
+                                    <button class="btn btn-success btn-small" onclick="waterLossAgent.saveAsDraft()">Save Draft</button>
+                                </div>
+                            </div>
+                            <div class="transcript-box" style="padding: 0; border: none; background: transparent;">
+                                <div id="wl-rendered-scope" style="background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.85rem; line-height: 1.5; height: 350px; overflow-y: auto; color: var(--text-primary); text-align: left;">
+                                    <!-- Markdown scope rendered here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main> <!-- Row 2 End: Main Scroller -->
+
+            <!-- Row 3: Bottom Navigation -->
+            <nav class="bottom-nav">
+                <a href="#" class="nav-item active" data-target="home" onclick="app.navigate('home')">
+                    <span class="material-symbols-outlined">home</span>
+                    <span>Home</span>
+                </a>
+                <a href="#" class="nav-item" data-target="tasks" onclick="app.navigate('tasks')">
+                    <span class="material-symbols-outlined">checklist</span>
+                    <span>Tasks</span>
+                </a>
+                <a href="#" class="nav-item" data-target="brain" onclick="app.navigate('brain'); return false;">
+                    <span class="material-symbols-outlined">psychology</span>
+                    <span>Brain</span>
+                </a>
+                <a href="#" class="nav-item" data-target="claims" onclick="app.navigate('claims')">
+                    <span class="material-symbols-outlined">folder_open</span>
+                    <span>Claims</span>
+                </a>
+                <a href="#" class="nav-item" data-target="settings" onclick="app.navigate('settings')">
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <!-- Global Brain Dump FAB -->
+            <button id="btn-global-brain-dump" class="fab-brain-dump" aria-label="Windshield Brain Dump" onclick="app.toggleBrainDump()">
+                <div class="pulse-ring hidden" id="brain-dump-pulse"></div>
+                <span class="material-symbols-outlined" style="font-size: 32px;">mic</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    
+    <!-- Brain Dump Action Summary Modal -->
+    <div id="modal-brain-dump-summary" class="modal hidden">
+        <div class="modal-content brain-dump-modal-content">
+            <div class="modal-header">
+                <h3 style="color: var(--primary-color);">Intel Captured</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div id="brain-dump-results" class="modal-body" style="background: var(--bg-surface-light);">
+                <!-- Dynamic Content goes here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- New Task Modal -->
+    <div id="modal-new-task" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>New Task</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <input type="text" id="task-desc" placeholder="What needs to be done?">
+                </div>
+                <div class="voice-input-row">
+                    <button class="icon-btn voice-btn"><span class="material-symbols-outlined">mic</span></button>
+                    <span>Tap to dictate task</span>
+                </div>
+                <div class="input-group">
+                    <select id="task-claim-id">
+                        <option value="">No Claim (General Task)</option>
+                        <!-- Options injected -->
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="app.saveTask()">Save Task</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Claim Modal -->
+    <div id="modal-new-claim" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>New Claim</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label>Claim Number</label>
+                    <div style="display: flex; align-items: center;">
+                        <span style="padding: 12px; background: var(--bg-surface-light); border-top-left-radius: 8px; border-bottom-left-radius: 8px; border: 1px solid var(--border-color); border-right: none; font-weight: bold;">30-</span>
+                        <input type="text" id="claim-number-input" placeholder="e.g. 97L7" required style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Insured Name (Optional)</label>
+                    <input type="text" id="claim-name-input" placeholder="John Doe">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="app.saveClaim()">Create Claim</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Policy Camera Scan Modal -->
+    <div id="modal-camera-scan" class="modal hidden">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>Policy Camera Scan</h3>
+                <button class="icon-btn" onclick="app.closeCameraScan()"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 15px;">
+                    Snap a photo of each page. The AI will extract the text and combine them into one policy record.
+                </p>
+                
+                <div id="scan-step-1">
+                    <div class="input-group">
+                        <label>Policy Name (e.g. State Farm Homeowners)</label>
+                        <input type="text" id="scan-policy-name" placeholder="Enter name...">
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="document.getElementById('scan-capture-input').click()">
+                        <span class="material-symbols-outlined">add_a_photo</span> Start Scanning / Add Page
+                    </button>
+                    <input type="file" id="scan-capture-input" accept="image/*" capture="environment" style="display: none;" onchange="app.handlePageCapture(event)">
+                </div>
+
+                <div id="scan-progress-area" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span id="scan-page-count" style="font-weight: bold; color: var(--primary-color);">Pages Scanned: 0</span>
+                        <div id="scan-spinner" class="hidden">
+                            <span class="material-symbols-outlined" style="animation: spin 2s linear infinite; vertical-align: middle;">sync</span> OCR Analyzing...
+                        </div>
+                    </div>
+                    
+                    <div id="scan-preview-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                        <!-- Thumbs of scanned pages added here -->
+                    </div>
+
+                    <button id="btn-finish-scan" class="btn btn-success btn-block disabled" onclick="app.finishPolicyScan()" disabled>
+                        <span class="material-symbols-outlined">cloud_done</span> Finish & Sync Policy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Report Bug / Feedback Modal -->
+    <div id="modal-report-bug" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Report Issue / Feedback</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 15px;">
+                    Describe what went wrong or what you'd like to see improved. The AI will see your technical logs automatically.
+                </p>
+                <div class="input-group">
+                    <textarea id="bug-description" placeholder="E.g. The Scan Estimate button didn't work after I took a photo..." style="height: 120px;"></textarea>
+                </div>
+                <button id="btn-submit-bug" class="btn btn-primary btn-block" onclick="app.submitBugReport()">Submit Report</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Modal: Save Draft -->
+    <div id="modal-save-draft" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Save Estimate Draft</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label>Draft Title / Claim Info</label>
+                    <input type="text" id="draft-title-input" placeholder="e.g. John Doe - Roof Ext">
+                </div>
+                <div class="input-group">
+                    <label>Associate with Claim (Optional)</label>
+                    <select id="draft-claim-id">
+                        <option value="">-- No Specific Claim --</option>
+                    </select>
+                </div>
+                <!-- Hidden storage for the codes while modal is open -->
+                <input type="hidden" id="draft-codes-hidden">
+                <button class="btn btn-primary btn-block" onclick="app.saveDraftEstimate()">Save Draft</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Version Track -->
+    <div id="app-version" style="display:none">v1.9.0</div>
+    
+    <!-- Entry Point (Vite ESM Surgery) -->
+    
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Use relative path for subfolder hosting
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
+        <!-- Video Recorder Modal -->
+        <div id="modal-video-recorder" class="modal hidden" style="z-index: 9999; background: #000;">
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column;">
+                <div style="padding: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.5);">
+                    <h3 style="color: white; margin: 0; font-size: 1.1rem;" id="video-recording-title">Scanning Estimate...</h3>
+                    <button class="icon-btn" onclick="app.stopVideoScan(false)" style="color: white;"><span class="material-symbols-outlined">close</span></button>
+                </div>
+                
+                <div style="flex: 1; position: relative; overflow: hidden; background: #111;">
+                    <video id="video-preview" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <div id="video-timer" style="position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 5px 15px; border-radius: 20px; font-family: monospace; font-size: 1.2rem; display: none;">00:00</div>
+                    <div id="video-instruction" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; width: 80%; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 12px;">
+                        <span class="material-symbols-outlined" style="font-size: 3rem; margin-bottom: 10px;">slow_motion_video</span>
+                        <p style="margin: 0;">Pan slowly across all pages of the estimate. Ensure text is clear and readable.</p>
+                    </div>
+                </div>
+
+                <div style="padding: 30px; display: flex; justify-content: center; background: rgba(0,0,0,0.5);">
+                    <button id="btn-record-start" class="btn btn-danger" style="width: 70px; height: 70px; border-radius: 50%; border: 5px solid white; display: flex; align-items: center; justify-content: center;" onclick="app.startVideoRecording()">
+                        <div style="width: 25px; height: 25px; background: white; border-radius: 50%;"></div>
+                    </button>
+                    <button id="btn-record-stop" class="btn btn-danger hidden" style="width: 70px; height: 70px; border-radius: 50%; border: 5px solid white; display: flex; align-items: center; justify-content: center;" onclick="app.stopVideoRecording()">
+                        <div style="width: 25px; height: 25px; background: white; border-radius: 4px;"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </body>
+</html>
