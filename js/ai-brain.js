@@ -134,7 +134,7 @@ Output ONLY the bulleted list, no conversational filler.`;
         }
     },
     
-    apiKey: 'xai-1dZkQTImZSpmm6clOdE6VIlhXuDwjpXmVjQsPPMPSrK9IJdu0Tb5mwxTJWo4cykYSZH8jd68WPdjulzk', // DEFAULT KEY
+    apiKey: null, // To be loaded from Cloud/Local Sync
 
     async analyzeImage(base64DataUrl, promptOverride = null) {
         const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;

@@ -8,7 +8,7 @@ const app = {
     scannedImagesCount: 0,
     loadedPolicies: [],
     xactimateCodes: [], // The entire local db
-    apiKey: 'xai-1dZkQTImZSpmm6clOdE6VIlhXuDwjpXmVjQsPPMPSrK9IJdu0Tb5mwxTJWo4cykYSZH8jd68WPdjulzk',
+    apiKey: null,
     settings: {
         darkMode: true,
         stealthMode: false,
