@@ -1,5 +1,6 @@
 const app = {
     currentView: 'home',
+    currentDesk: 'field',
     currentClaimId: null,
     currentVisionBase64: [], // Modified to array
     currentEstimateBase64: null,
@@ -165,6 +166,33 @@ const app = {
         
         this.currentView = viewId;
         window.location.hash = viewId;
+
+        // Auto-switch desk based on view if navigated directly
+        const strategyViews = ['weather', 'smart-map', 'dictionary', 'local-wonders', 'strategy'];
+        if (strategyViews.includes(viewId)) {
+            this.switchDesk('strategy', false);
+        } else if (viewId === 'home') {
+            this.switchDesk('field', false);
+        }
+    },
+
+    switchDesk(deskId, navigateToHome = true) {
+        this.currentDesk = deskId;
+        
+        // Update Sidebar UI
+        document.querySelectorAll('.nav-desk-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const activeBtn = deskId === 'field' ? 
+            document.getElementById('btn-tab-field') : 
+            document.getElementById('btn-tab-strategy');
+        
+        if (activeBtn) activeBtn.classList.add('active');
+
+        if (navigateToHome) {
+            this.navigate(deskId === 'field' ? 'home' : 'strategy');
+        }
     },
 
     generateAppQRCode() {
@@ -1048,7 +1076,7 @@ const app = {
 
         const origBtnText = btn.innerHTML;
         try {
-            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Pulling Data...';
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Querying Storm Desk...';
             btn.disabled = true;
             outBox.classList.add('hidden');
 
@@ -1057,20 +1085,83 @@ const app = {
             if(!geoData.results || geoData.results.length === 0) throw new Error("Could not find that location.");
             const loc = geoData.results[0];
 
+            // Pull standard data + wind gusts
             const weatherRes = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${loc.latitude}&longitude=${loc.longitude}&start_date=${date}&end_date=${date}&daily=weather_code,temperature_2m_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max&timezone=auto`);
             const weatherData = await weatherRes.json();
 
             if(!weatherData.daily) throw new Error("No weather data found for this date.");
             
             const w = weatherData.daily;
-            textEl.value = `📍 Location: ${loc.name}, ${loc.admin1 || ''}\\n📅 Date: ${date}\\n\\n🌪️ Max Wind Speed: ${w.wind_speed_10m_max[0]} km/h\\n🌬️ Max Wind Gusts: ${w.wind_gusts_10m_max[0]} km/h\\n🌧️ Precipitation: ${w.precipitation_sum[0]} mm\\n🌡️ Max Temp: ${w.temperature_2m_max[0]}°C`;
+            
+            // CONVERSIONS: mm to Inches, km/h to MPH
+            const rainIn = (w.precipitation_sum[0] * 0.0393701).toFixed(2);
+            const windMph = (w.wind_speed_10m_max[0] * 0.621371).toFixed(1);
+            const gustMph = (w.wind_gusts_10m_max[0] * 0.621371).toFixed(1);
+            const tempF = (w.temperature_2m_max[0] * 9/5 + 32).toFixed(1);
+
+            // Determine if stormy
+            const isStormy = w.wind_gusts_10m_max[0] > 40 || w.precipitation_sum[0] > 10;
+            const stormBadge = isStormy ? "⚠️ SIGNIFICANT EVENT DETECTED" : "✅ Normal Conditions";
+
+            textEl.value = `📍 Location: ${loc.name}, ${loc.admin1 || ''}\n📅 Date: ${date}\n---\n${stormBadge}\n\n🌪️ Max Wind: ${windMph} MPH\n🌬️ Peak Gusts: ${gustMph} MPH\n🌧️ Rain total: ${rainIn}"\n🌡️ Max Temp: ${tempF}°F\n\n[Estimation]: Conditions suggest moderate storm activity. Check NEXRAD hail reports for verification.`;
+            
             outBox.classList.remove('hidden');
+            this.showToast("Detailed weather data retrieved.", "success");
         } catch(e) {
             console.error(e);
             alert(e.message);
         } finally {
             btn.innerHTML = origBtnText;
             btn.disabled = false;
+        }
+    },
+
+    async calculateDistance() {
+        const origin = document.getElementById('map-origin').value.trim();
+        const dest = document.getElementById('map-destination').value.trim();
+        const results = document.getElementById('map-results');
+        const dataText = document.getElementById('map-data-text');
+        const openBtn = document.getElementById('btn-open-google-maps');
+
+        if (!origin || !dest) return alert("Please enter both Start and Destination addresses.");
+
+        try {
+            dataText.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 1s linear infinite;">sync</span> Running Logistics AI...';
+            results.classList.remove('hidden');
+
+            // Find Origin Geo
+            const geo1 = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(origin)}&count=1`).then(r => r.json());
+            const geo2 = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(dest)}&count=1`).then(r => r.json());
+
+            if (!geo1.results || !geo2.results) throw new Error("Could not geocode one of the addresses.");
+
+            const lat1 = geo1.results[0].latitude;
+            const lon1 = geo1.results[0].longitude;
+            const lat2 = geo2.results[0].latitude;
+            const lon2 = geo2.results[0].longitude;
+
+            // Haversine formula for "As the crow flies"
+            const R = 3958.8; // Radius of Earth in MILES
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = (R * c).toFixed(1);
+
+            const estTime = (distance * 1.4).toFixed(0); // Very rough estimate factor for driving
+
+            dataText.innerHTML = `🏁 Distance: <strong>${distance} miles</strong><br>🚗 Est. Drive: <strong>~${estTime} mins</strong>`;
+            
+            openBtn.onclick = () => {
+                window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=driving`, '_blank');
+            };
+
+            this.showToast("Logistics estimation complete.", "success");
+        } catch (e) {
+            console.error(e);
+            alert("Error calculating distance. Try more specific addresses.");
         }
     },
 

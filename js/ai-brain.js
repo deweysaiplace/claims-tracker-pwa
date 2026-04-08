@@ -651,10 +651,13 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
         const apiKey = localStorage.getItem('GROK_API_KEY');
         if (!apiKey) throw new Error("API Key required");
 
-        const prompt = `You are an Xactimate Code Expert. 
-        A user is searching for a material or line item: "${query}".
-        Return a list of the top 5 most relevant Xactimate codes.
-        Include Code, Description, and approximate Category.
+        const prompt = `You are a Master Xactimate Line Item Expert. 
+        The user is searching for: "${query}".
+        
+        1. Identify the primary line item.
+        2. Identify COMPLEMENTARY items that typically go with this trade (e.g., if it's roofing, suggest the shingles + underlayment + starter + ridge cap).
+        3. Return a list of the top 8 most relevant Xactimate codes.
+        Include Code, Description, and Category.
         
         Return STRICTLY in JSON format:
         {

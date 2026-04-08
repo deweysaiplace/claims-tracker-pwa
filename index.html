@@ -64,20 +64,38 @@
         </div>
 
         <!-- Main App Content (Always visible now) -->
-        <div id="main-app" class="">
-            <div id="offline-banner" class="hidden">⚠️ Offline Mode - Working from Cache</div>
-            <!-- Header -->
-            <header class="app-header">
-                <div class="header-title" style="display: flex; align-items: baseline; gap: 8px;">
-                    <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">Claims Tracker</span>
-                    <span id="current-view-title" style="font-size: 0.8em; opacity: 0.6;">Home</span>
-                </div>
-                <div class="header-actions">
-                    <button id="btn-logout" class="icon-btn" aria-label="Logout" onclick="window.supabaseClient.auth.signOut()">
-                        <span class="material-symbols-outlined">logout</span>
+        <div id="main-app" class="app-layout hidden">
+            <!-- Sidebar Navigation -->
+            <nav class="sidebar-nav">
+                <button class="nav-desk-btn active" id="btn-tab-field" onclick="app.switchDesk('field')">
+                    <span class="material-symbols-outlined">construction</span>
+                    <span>Field</span>
+                </button>
+                <button class="nav-desk-btn" id="btn-tab-strategy" onclick="app.switchDesk('strategy')">
+                    <span class="material-symbols-outlined">map</span>
+                    <span>Strategy</span>
+                </button>
+                <div style="margin-top: auto;">
+                    <button class="nav-desk-btn" onclick="app.navigate('settings')" style="opacity: 0.6;">
+                        <span class="material-symbols-outlined">settings</span>
                     </button>
                 </div>
-            </header>
+            </nav>
+
+            <div class="main-content">
+                <div id="offline-banner" class="hidden">⚠️ Offline Mode - Working from Cache</div>
+                <!-- Header -->
+                <header class="app-header">
+                    <div class="header-title" style="display: flex; align-items: baseline; gap: 8px;">
+                        <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">Claims Tracker</span>
+                        <span id="current-view-title" style="font-size: 0.8em; opacity: 0.6;">v1.7.9</span>
+                    </div>
+                    <div class="header-actions">
+                        <button id="btn-logout" class="icon-btn" aria-label="Logout" onclick="window.supabaseClient.auth.signOut()">
+                            <span class="material-symbols-outlined">logout</span>
+                        </button>
+                    </div>
+                </header>
 
             <!-- Views -->
             <main class="app-main">
@@ -122,13 +140,6 @@
                             <h3>Policy Chat</h3>
                             <p>PDF AI Analyst</p>
                         </button>
-                        <button class="action-card" onclick="app.navigate('weather')" style="grid-column: span 1;">
-                            <div class="action-icon weather-icon" style="background: var(--primary-color); color: white;">
-                                <span class="material-symbols-outlined">thunderstorm</span>
-                            </div>
-                            <h3>Date of Loss</h3>
-                            <p>Weather History</p>
-                        </button>
                         <button class="action-card" onclick="app.navigate('scan-estimate')" style="grid-column: span 1;">
                             <div class="action-icon estimate-icon" style="background: #e91e63; color: white;">
                                 <span class="material-symbols-outlined">receipt_long</span>
@@ -145,21 +156,6 @@
                             <p>Siding & Soffit</p>
                         </button>
 
-                        <button class="action-card" onclick="app.navigate('local-wonders')" style="grid-column: span 1;">
-                            <div class="action-icon explore-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC00); color: white;">
-                                <span class="material-symbols-outlined">explore</span>
-                            </div>
-                            <h3>Local Wonders</h3>
-                            <p>Atlas AI</p>
-                        </button>
-
-                        <button class="action-card" onclick="app.navigate('dictionary')" style="grid-column: span 1;">
-                            <div class="action-icon dict-icon" style="background: #673ab7; color: white;">
-                                <span class="material-symbols-outlined">menu_book</span>
-                            </div>
-                            <h3>Xact Dictionary</h3>
-                            <p>AI Code Search</p>
-                        </button>
 
 
                     </div>
@@ -646,7 +642,73 @@
                         </ul>
                     </div>
                 </section>
-            </main>
+                <!-- Strategy Desk View (Tab 2) -->
+                <section id="view-strategy" class="view">
+                    <div class="quick-actions">
+                        <button class="action-card" onclick="app.navigate('weather')">
+                            <div class="action-icon weather-icon" style="background: var(--primary-color); color: white;">
+                                <span class="material-symbols-outlined">thunderstorm</span>
+                            </div>
+                            <h3>Date of Loss</h3>
+                            <p>Weather History</p>
+                        </button>
+                        
+                        <button class="action-card" onclick="app.navigate('smart-map')">
+                            <div class="action-icon map-icon" style="background: var(--success-color); color: white;">
+                                <span class="material-symbols-outlined">directions_car</span>
+                            </div>
+                            <h3>Smart Map</h3>
+                            <p>Distance & Logistics</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('dictionary')">
+                            <div class="action-icon dict-icon" style="background: var(--warning-color); color: white;">
+                                <span class="material-symbols-outlined">menu_book</span>
+                            </div>
+                            <h3>Xact ID</h3>
+                            <p>Code Reference</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('local-wonders')">
+                            <div class="action-icon explore-icon" style="background: linear-gradient(135deg, #FF9500, #FFCC00); color: white;">
+                                <span class="material-symbols-outlined">explore</span>
+                            </div>
+                            <h3>Local Wonders</h3>
+                            <p>Discovery</p>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Smart Map View -->
+                <section id="view-smart-map" class="view">
+                    <div class="view-content voice-container">
+                        <h2>Smart Map Logistics</h2>
+                        <p class="subtitle">Calculate distance between claims</p>
+                        
+                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div class="input-group">
+                                <label>Start Address / Current Claim</label>
+                                <input type="text" id="map-origin" placeholder="123 Origin St, City, ST">
+                            </div>
+                            <div class="input-group">
+                                <label>Destination Address / Next Claim</label>
+                                <input type="text" id="map-destination" placeholder="456 Next St, City, ST">
+                            </div>
+                            <button class="btn btn-primary btn-block" onclick="app.calculateDistance()">
+                                <span class="material-symbols-outlined">route</span> Calculate Route
+                            </button>
+                        </div>
+
+                        <div id="map-results" class="hidden" style="margin-top: 20px; padding: 15px; background: rgba(0,122,255,0.1); border-radius: 8px;">
+                            <div id="map-data-text" style="font-size: 1.1rem; text-align: center;"></div>
+                            <button class="btn btn-secondary btn-block" style="margin-top:15px;" id="btn-open-google-maps">
+                                <span class="material-symbols-outlined">map</span> Open in Navigation
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div><!-- End Main Content -->
+        </div><!-- End App Layout -->
 
             <!-- Bottom Navigation -->
             <nav class="bottom-nav">
@@ -811,6 +873,9 @@
     
     <!-- Toast Notifications -->
     <div id="toast-container" class="toast-container"></div>
+
+    <!-- Hidden Version Track -->
+    <div id="app-version" style="display:none">v1.7.9</div>
     
     <!-- Scripts -->
     <script src="js/supabase-client.js?v=20"></script>
