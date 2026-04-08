@@ -69,13 +69,16 @@ For each room or area:
 - Measurements provided.
 - Missing measurements or facts needed.
 
-3. LIKELY LINE ITEMS / CODE CANDIDATES
-For each room:
-- Item description.
-- Why it may apply.
-- Likely Xactimate-style code candidate if confidence is reasonable.
-- Confidence level: High / Medium / Low.
-- If low confidence, explain what detail is missing.
+3. LIKELY LINE ITEMS (JSON BLOCK)
+At the end of your response, you MUST output a raw JSON array block wrapped in <ESTIMATE_ITEMS> and </ESTIMATE_ITEMS> tags. 
+Do not include formatting backticks around the json inside the tag.
+Provide a list of recommended repair operations. The PWA will use this block to map these operations to actual Xactimate codes.
+Format exactly like this:
+<ESTIMATE_ITEMS>
+[
+  {"room": "Living Room", "operation": "Tear out and bag drywall", "reason": "Mentioned 2ft flood cut", "confidence": "High"}
+]
+</ESTIMATE_ITEMS>
 
 4. PROCEDURAL BLIND SPOT SCANNER [🚨 CRITICAL]
 - Cross-reference the notes against standard State Farm water loss procedures.
@@ -242,7 +245,7 @@ NEVER
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20',
+                    model: 'grok-4.20-reasoning',
                     messages: messages,
                     temperature: 0.2
                 })
@@ -253,10 +256,21 @@ NEVER
                 throw new Error("Grok AI Error: " + errText);
             }
 
-            const data = await response.json();
-            const resultText = data.choices[0].message.content.trim();
+            let resultText = data.choices[0].message.content.trim();
 
-            this.currentDraftOutput = resultText;
+            // Extract ESTIMATE_ITEMS JSON
+            let estimateItems = [];
+            const itemsMatch = resultText.match(/<ESTIMATE_ITEMS>\s*([\s\S]*?)\s*<\/ESTIMATE_ITEMS>/);
+            if (itemsMatch) {
+                try {
+                    estimateItems = JSON.parse(itemsMatch[1].trim());
+                    resultText = resultText.replace(itemsMatch[0], ''); // Remove from markdown
+                } catch(e) {
+                    console.error("Failed to parse estimate items JSON", e);
+                }
+            }
+
+            this.currentDraftOutput = resultText.trim();
             
             // Simple markdown rendering to HTML (since no markdown parser library is imported)
             let htmlFormatted = resultText
@@ -267,6 +281,58 @@ NEVER
                 .replace(/# (.*?)\n/g, '<h2 style="margin: 20px 0 5px 0; color: var(--primary-color);">$1</h2>')
                 .replace(/- (.*?)(\n|$)/g, '<li style="margin-left: 20px;">$1</li>')
                 .replace(/\n/g, '<br>');
+
+            if (estimateItems && estimateItems.length > 0) {
+                htmlFormatted += `<div class="zero-hallucination-table" style="margin-top: 30px;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 10px;"><i class="fas fa-microchip"></i> Zero-Hallucination Scope Translator</h3>
+                    <p style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 15px;">Locally verified against 14,000+ Xactimate codes. Will force manual selection if AI intent is ambiguous.</p>
+                    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; overflow-x: auto;">
+                        <table style="width: 100%; text-align: left; border-collapse: collapse; min-width: 600px;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.85em; text-transform: uppercase;">
+                                    <th style="padding: 10px;">Room</th>
+                                    <th style="padding: 10px;">AI Operation Intent</th>
+                                    <th style="padding: 10px;">Verified Xactimate Code</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                            
+                for (let i = 0; i < estimateItems.length; i++) {
+                    const item = estimateItems[i];
+                    // Call the local search
+                    const matches = window.app.searchXactimate(item.operation, 10);
+                    let controlHtml = `<span style="color: var(--danger-color); font-size: 0.9em;">[No Valid Match In Database]</span>`;
+                    
+                    if (matches.length > 0) {
+                        // High confidence if score >= 3 AND significantly beats alternatives
+                        if (matches[0].score >= 3 && (matches.length === 1 || matches[0].score > matches[1].score + 2)) {
+                            controlHtml = `<div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span style="color: var(--success-color); font-weight: bold; background: rgba(0,255,100,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(0,255,100,0.3); display: inline-block; width: fit-content;"><i class="fas fa-check-circle"></i> ${matches[0].item.code}</span>
+                                <span style="font-size: 0.8em; color: var(--text-muted);">${matches[0].item.desc}</span>
+                            </div>`;
+                        } else {
+                            // Ambiguous: Requires Adjuster Selection
+                            controlHtml = `<select style="background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 5px; border-radius: 4px; border-left: 3px solid var(--warning-color); font-size: 0.85em; max-width: 250px;">
+                                <option value="">[🫵 REQUIRES ADJUSTER SELECTION]</option>
+                                ${matches.map(m => `<option value="${m.item.code}">${m.item.code} - ${m.item.desc}</option>`).join('')}
+                            </select>`;
+                        }
+                    }
+
+                    htmlFormatted += `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 10px; font-weight: bold; font-size: 0.9em; vertical-align: top;">${item.room || '-'}</td>
+                            <td style="padding: 10px; vertical-align: top;">
+                                <span style="font-size: 0.95em;">${item.operation}</span><br>
+                                <span style="font-size: 0.8em; color: var(--text-muted);"><i class="fas fa-info-circle"></i> ${item.reason || ''}</span>
+                            </td>
+                            <td style="padding: 10px; vertical-align: top;">${controlHtml}</td>
+                        </tr>
+                    `;
+                }
+                
+                htmlFormatted += `</tbody></table></div></div>`;
+            }
 
             renderedScope.innerHTML = htmlFormatted;
             

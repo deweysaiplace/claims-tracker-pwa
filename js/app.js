@@ -7,6 +7,7 @@ const app = {
     currentScanPages: [],
     scannedImagesCount: 0,
     loadedPolicies: [],
+    xactimateCodes: [], // The entire local db
     settings: {
         darkMode: true,
         stealthMode: false,
@@ -18,13 +19,105 @@ const app = {
         this.bindEvents();
         this.setupErrorHandlers();
         this.updateDBStatus();
+        this.loadXactimateCodes();
         
         // Setup simple navigation
         const hash = window.location.hash.replace('#', '') || 'home';
         this.navigate(hash);
 
         this.setupOfflineDetection();
+        this.makeFabDraggable();
+    },
 
+    async loadXactimateCodes() {
+        try {
+            const res = await fetch('./js/xactimate_codes.json');
+            this.xactimateCodes = await res.json();
+            console.log(`Loaded ${this.xactimateCodes.length} Exact Xactimate Codes.`);
+        } catch(e) {
+            console.error("Failed to load Xactimate dictionary:", e);
+        }
+    },
+
+    makeFabDraggable() {
+        const fab = document.getElementById('btn-global-brain-dump');
+        if (!fab) return;
+        
+        let isDragging = false;
+        let draggedFlag = false;
+        let startX, startY, originalTouchX, originalTouchY;
+
+        const onDragStart = (e) => {
+            draggedFlag = false;
+            // Get coordinates
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            startX = clientX;
+            startY = clientY;
+            
+            const rect = fab.getBoundingClientRect();
+            originalTouchX = clientX - rect.left;
+            originalTouchY = clientY - rect.top;
+            isDragging = true;
+        };
+
+        const onDragMove = (e) => {
+            if (!isDragging) return;
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+            if (Math.abs(clientX - startX) > 8 || Math.abs(clientY - startY) > 8) {
+                draggedFlag = true;
+                e.preventDefault();
+                fab.style.bottom = 'auto';
+                fab.style.right = 'auto';
+                fab.style.left = (clientX - originalTouchX) + 'px';
+                fab.style.top = (clientY - originalTouchY) + 'px';
+            }
+        };
+
+        const onDragEnd = () => { isDragging = false; };
+
+        fab.addEventListener('mousedown', onDragStart);
+        document.addEventListener('mousemove', onDragMove, {passive: false});
+        document.addEventListener('mouseup', onDragEnd);
+
+        fab.addEventListener('touchstart', onDragStart, {passive: true});
+        document.addEventListener('touchmove', onDragMove, {passive: false});
+        document.addEventListener('touchend', onDragEnd);
+
+        // Prevent click if we actually dragged
+        fab.addEventListener('click', (e) => {
+            if (draggedFlag) {
+                e.preventDefault();
+                e.stopPropagation();
+                draggedFlag = false;
+            }
+        }, true);
+    },
+
+    searchXactimate(query, maxResults = 5) {
+        if (!this.xactimateCodes || this.xactimateCodes.length === 0) return [];
+        const sanitized = query.toLowerCase().replace(/[^a-z0-9 ]/g, ' ');
+        const tokens = sanitized.split(' ').filter(x => x.length > 2);
+        
+        let results = this.xactimateCodes.map(item => {
+            let score = 0;
+            let textToSearch = (item.desc + " " + item.code).toLowerCase();
+            
+            // Code exact match is highest weight
+            if (item.code.toLowerCase() === sanitized.trim()) score += 20;
+
+            tokens.forEach(token => {
+                if (textToSearch.includes(token)) score += 1;
+            });
+            // Exact phrase match bonus
+            if (item.desc.toLowerCase().includes(sanitized.trim())) score += 5;
+            
+            return { item, score };
+        }).filter(x => x.score > 0).sort((a, b) => b.score - a.score).slice(0, maxResults);
+        
+        return results;
     },
 
     setupOfflineDetection() {
@@ -69,12 +162,12 @@ const app = {
     setupErrorHandlers() {
         window.onerror = (message, source, lineno, colno, error) => {
             const userId = auth.currentUser ? auth.currentUser.id : null;
-            db.logError(userId, message, error ? error.stack : `At ${source}:${lineno}`, this.currentView, "v1.7.5");
+            db.logError(userId, message, error ? error.stack : `At ${source}:${lineno}`, this.currentView, "v1.8.0");
         };
 
         window.onunhandledrejection = (event) => {
             const userId = auth.currentUser ? auth.currentUser.id : null;
-            db.logError(userId, "Unhandled Promise Rejection: " + event.reason, null, this.currentView, "v1.7.5");
+            db.logError(userId, "Unhandled Promise Rejection: " + event.reason, null, this.currentView, "v1.8.0");
         };
     },
 
@@ -138,6 +231,7 @@ const app = {
             'home': 'Home',
             'tasks': 'Tasks',
             'claims': 'Claims',
+            'brain': 'AI Assistant',
             'voice-note': 'Voicemail',
             'dictate-summary': 'Summary',
             'settings': 'Settings',
@@ -1713,7 +1807,7 @@ const app = {
             };
 
             // Log as a special error type for now
-            const res = await db.logError(userId, "USER_FEEDBACK: " + description, JSON.stringify(context), this.currentView, "v1.7.8");
+            const res = await db.logError(userId, "USER_FEEDBACK: " + description, JSON.stringify(context), this.currentView, "v1.8.0");
             console.log("Bug Report Response:", res);
 
             this.showToast("Thank you! Feedback sent.", "success");
@@ -1961,7 +2055,7 @@ const app = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
-                    model: 'grok-4.20',
+                    model: 'grok-4.20-reasoning',
                     messages: [{ role: 'user', content: contentBlock }],
                     temperature: 0.1
                 })
@@ -2005,7 +2099,7 @@ const app = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
-                    model: 'grok-4.20',
+                    model: 'grok-4.20-reasoning',
                     messages: this.copilotHistory,
                     temperature: 0.2
                 })
