@@ -1613,7 +1613,8 @@ const app = {
             };
 
             // Log as a special error type for now
-            await db.logError(userId, "USER_FEEDBACK: " + description, JSON.stringify(context), this.currentView, "v1.7.7");
+            const res = await db.logError(userId, "USER_FEEDBACK: " + description, JSON.stringify(context), this.currentView, "v1.7.8");
+            console.log("Bug Report Response:", res);
 
             this.showToast("Thank you! Feedback sent.", "success");
             descInput.value = '';

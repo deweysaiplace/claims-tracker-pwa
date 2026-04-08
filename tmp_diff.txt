@@ -1,0 +1,542 @@
+diff --git a/css/style.css b/css/style.css
+index a89bf95..7419664 100644
+--- a/css/style.css
++++ b/css/style.css
+@@ -431,3 +431,54 @@ body {
+ }
+ 
+ .transcript-box.large textarea { height: 300px; }
++
++/* Material ID Styles */
++.material-info {
++    margin-top: 10px;
++    line-height: 1.6;
++    text-align: left;
++}
++
++.material-info p {
++    margin-bottom: 8px;
++    font-size: 0.95rem;
++}
++
++.material-label {
++    font-weight: 600;
++    color: var(--text-secondary);
++    display: inline-block;
++    width: 100px;
++}
++
++.availability-section {
++    margin-top: 15px;
++    padding-top: 15px;
++    border-top: 1px dashed var(--border-color);
++    text-align: left;
++}
++
++.availability-section h4 {
++    margin-bottom: 10px;
++    color: var(--primary-color);
++    font-size: 1rem;
++}
++
++.availability-status {
++    font-size: 0.9rem;
++    line-height: 1.5;
++    background: var(--bg-surface-light);
++    padding: 12px;
++    border-radius: 6px;
++    border-left: 4px solid var(--info-color);
++}
++
++.availability-status.discontinued {
++    border-left-color: var(--danger-color);
++    background: rgba(244, 67, 54, 0.1);
++}
++
++.availability-status.available {
++    border-left-color: var(--success-color);
++    background: rgba(76, 175, 80, 0.1);
++}
+diff --git a/index.html b/index.html
+index 6e0265b..75feda9 100644
+--- a/index.html
++++ b/index.html
+@@ -134,6 +134,14 @@
+                             <h3>Scan Estimate</h3>
+                             <p>Photo to Codes</p>
+                         </button>
++                        
++                        <button class="action-card" onclick="app.navigate('material-id')" style="grid-column: span 1;">
++                            <div class="action-icon material-icon" style="background: #607d8b; color: white;">
++                                <span class="material-symbols-outlined">category</span>
++                            </div>
++                            <h3>Material ID</h3>
++                            <p>Siding & Soffit</p>
++                        </button>
+                     </div>
+ 
+                     <div class="dashboard-widgets">
+@@ -242,6 +250,58 @@
+                      </div>
+                 </section>
+ 
++                <!-- Material ID View -->
++                <section id="view-material-id" class="view">
++                    <div class="vision-container">
++                        <h2>Material Identifier</h2>
++                        <p class="subtitle">Identify siding, soffit, and fascia</p>
++                        
++                        <div id="material-camera-container" class="camera-preview">
++                            <div class="camera-placeholder">
++                                <span class="material-symbols-outlined" style="font-size: 4rem; color: var(--text-secondary);">category</span>
++                                <p>Take a clear photo of the material profile</p>
++                            </div>
++                            <img id="material-photo-preview" class="hidden">
++                        </div>
++
++                        <div class="vision-actions">
++                            <input type="file" id="material-file-input" accept="image/*" capture="environment" class="hidden" onchange="app.handleMaterialPhoto(event)">
++                            <button class="btn btn-primary btn-block" onclick="document.getElementById('material-file-input').click()">
++                                <span class="material-symbols-outlined">photo_camera</span> Snap Photo
++                            </button>
++                            <button id="btn-analyze-material" class="btn btn-secondary btn-block hidden" onclick="app.analyzeMaterial()">
++                                <span class="material-symbols-outlined">search</span> Identify Material
++                            </button>
++                        </div>
++
++                        <div id="material-results" class="results-container hidden">
++                            <div class="results-card">
++                                <h3>Identification Results</h3>
++                                <div id="material-info" class="material-info">
++                                    <!-- Results injected here -->
++                                </div>
++                                <div id="availability-section" class="availability-section hidden">
++                                    <hr>
++                                    <h4>Availability Check</h4>
++                                    <div id="availability-status" class="availability-status">
++                                        <!-- Availability findings injected here -->
++                                    </div>
++                                </div>
++                                <div class="result-actions" style="margin-top: 15px; display: flex; gap: 10px;">
++                                    <button id="btn-check-availability" class="btn btn-info btn-block" onclick="app.checkAvailability()">
++                                        <span class="material-symbols-outlined">event_busy</span> Check for Discontinued Status
++                                    </button>
++                                </div>
++                            </div>
++                        </div>
++
++                        <div id="material-loading" class="loading-overlay hidden">
++                            <div class="spinner"></div>
++                            <p id="material-loading-text">Analyzing material profile...</p>
++                        </div>
++                    </div>
++                </section>
++                
+                 <!-- Settings View -->
+                 <section id="view-settings" class="view">
+                     <div class="view-content voice-container">
+@@ -335,6 +395,16 @@
+                                 <span class="material-symbols-outlined">delete_forever</span> Wipe All Local Data
+                             </button>
+                         </div>
++
++                        <!-- Share App / QR Code Card -->
++                        <div style="margin-top: 20px; background: var(--bg-surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); text-align: center;">
++                            <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Share This App</h3>
++                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 15px;">Scan this QR code on another device to access the claims workflow app.</p>
++                            <div id="qr-code-container" style="background: white; padding: 15px; border-radius: 12px; display: inline-block; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
++                                <img id="app-qr-code" src="" alt="App QR Code" style="width: 180px; height: 180px; display: block;">
++                            </div>
++                            <div id="app-url-display" style="font-size: 0.75rem; color: var(--primary-color); word-break: break-all; opacity: 0.7;"></div>
++                        </div>
+                         
+                         <div style="margin-top: 30px; text-align: center; color: var(--text-secondary); font-size: 0.75rem;">
+                             App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.6.0 (Bypass Mode)</span><br>
+diff --git a/js/ai-brain.js b/js/ai-brain.js
+index 75c02bc..98a3738 100644
+--- a/js/ai-brain.js
++++ b/js/ai-brain.js
+@@ -334,5 +334,113 @@ Provide only the code list. If you are unsure of a code, provide the most likely
+             console.error("Estimate Analysis Error:", error);
+             throw error;
+         }
++    },
++
++    async identifyMaterial(base64DataUrl) {
++        const apiKey = localStorage.getItem('GROK_API_KEY');
++        if (!apiKey) throw new Error("API Key required");
++
++        const base64Image = base64DataUrl.split(',')[1];
++        
++        const prompt = `You are an expert exterior building material specialist and insurance adjuster.
++Analyze this photo of a building material (siding, soffit, or fascia).
++Identify the following details with high precision:
++1. Category: (e.g., Siding, Soffit, Fascia)
++2. Material: (e.g., Vinyl, Aluminum, Fiber Cement, Wood, Steel)
++3. Profile: (e.g., Double 4", Double 5", Triple 3", Dutch Lap, Beaded, Vented vs Smooth)
++4. Texture: (e.g., Woodgrain, Smooth, Cedar Grain)
++5. Color: (Provide the most likely matching color name)
++6. Suggested Xactimate Code: (The most appropriate line item code, e.g., SDG V4, SFG VSOF, etc.)
++
++Return your response as a raw JSON object only:
++{
++    "category": "...",
++    "material": "...",
++    "profile": "...",
++    "texture": "...",
++    "color": "...",
++    "xactimate_code": "..."
++}`;
++
++        try {
++            const response = await fetch(this.apiUrl, {
++                method: 'POST',
++                headers: {
++                    'Content-Type': 'application/json',
++                    'Authorization': `Bearer ${apiKey}`
++                },
++                body: JSON.stringify({
++                    model: 'grok-4.20',
++                    messages: [
++                        { 
++                            role: 'user', 
++                            content: [
++                                { type: "text", text: prompt },
++                                {
++                                    type: "image_url",
++                                    image_url: { url: `data:image/jpeg;base64,${base64Image}` }
++                                }
++                            ]
++                        }
++                    ],
++                    temperature: 0.1
++                })
++            });
++
++            if (!response.ok) {
++                const errText = await response.text();
++                throw new Error("Grok Material ID Error: " + errText);
++            }
++            const data = await response.json();
++            let content = data.choices[0].message.content.trim();
++            
++            // Cleanup JSON markdown if present
++            if (content.startsWith('```json')) content = content.replace(/^```json\n/, '').replace(/\n```$/, '');
++            else if (content.startsWith('```')) content = content.replace(/^```\n/, '').replace(/\n```$/, '');
++            
++            return JSON.parse(content);
++        } catch (error) {
++            console.error("Material ID Error:", error);
++            throw error;
++        }
++    },
++
++    async checkDiscontinued(description) {
++        const apiKey = localStorage.getItem('GROK_API_KEY');
++        if (!apiKey) throw new Error("API Key required");
++
++        const prompt = `You are an insurance claims resource specialist. 
++Check if the following building material is currently DISCONTINUED or AVAILABLE:
++"${description}"
++
++Search your internal knowledge for discontinuation notices from major manufacturers (e.g., Alcoa, Mastic, CertainTeed, James Hardie). 
++If it is discontinued, explain WHY and if there are known technical matches.
++If you are unsure, state that it may require an ITEL report for confirmation.
++
++Provide a concise summary in HTML format (using <b> tags for emphasis).`;
++
++        try {
++            const response = await fetch(this.apiUrl, {
++                method: 'POST',
++                headers: {
++                    'Content-Type': 'application/json',
++                    'Authorization': `Bearer ${apiKey}`
++                },
++                body: JSON.stringify({
++                    model: 'grok-4.20',
++                    messages: [
++                        { role: 'user', content: prompt }
++                    ],
++                    temperature: 0.3
++                })
++            });
++
++            if (!response.ok) throw new Error("Grok Availability Error");
++            const data = await response.json();
++            return data.choices[0].message.content.trim();
++        } catch (error) {
++            console.error("Availability Error:", error);
++            throw error;
++        }
+     }
+ };
+diff --git a/js/app.js b/js/app.js
+index c195443..df44725 100644
+--- a/js/app.js
++++ b/js/app.js
+@@ -137,12 +137,139 @@ const app = {
+             if (apiKeyInput) {
+                 apiKeyInput.value = localStorage.getItem('GROK_API_KEY') || '';
+             }
++            this.generateAppQRCode();
++        }
++        
++        if (viewId === 'material-id') {
++            this.resetMaterialID();
+         }
+         
+         this.currentView = viewId;
+         window.location.hash = viewId;
+     },
+ 
++    generateAppQRCode() {
++        const qrImg = document.getElementById('app-qr-code');
++        const urlDisplay = document.getElementById('app-url-display');
++        if (!qrImg || !urlDisplay) return;
++
++        const currentUrl = window.location.href.split('#')[0]; // Current base URL
++        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}&margin=10&color=1a1a2e`;
++        
++        qrImg.src = qrUrl;
++        urlDisplay.textContent = currentUrl;
++    },
++
++    // -------------------------------------------------------------------------
++    // Material ID Logic
++    // -------------------------------------------------------------------------
++    resetMaterialID() {
++        this.currentMaterialBase64 = null;
++        const preview = document.getElementById('material-photo-preview');
++        const placeholder = document.querySelector('#material-camera-container .camera-placeholder');
++        const analyzeBtn = document.getElementById('btn-analyze-material');
++        const results = document.getElementById('material-results');
++        const availSection = document.getElementById('availability-section');
++
++        if (preview) preview.classList.add('hidden');
++        if (placeholder) placeholder.classList.remove('hidden');
++        if (analyzeBtn) analyzeBtn.classList.add('hidden');
++        if (results) results.classList.add('hidden');
++        if (availSection) availSection.classList.add('hidden');
++    },
++
++    handleMaterialPhoto(event) {
++        const file = event.target.files[0];
++        if (!file) return;
++
++        const reader = new FileReader();
++        reader.onload = (e) => {
++            const base64 = e.target.result;
++            this.currentMaterialBase64 = base64;
++            
++            const preview = document.getElementById('material-photo-preview');
++            preview.src = base64;
++            preview.classList.remove('hidden');
++            
++            const placeholder = document.querySelector('#material-camera-container .camera-placeholder');
++            if (placeholder) placeholder.classList.add('hidden');
++            
++            document.getElementById('btn-analyze-material').classList.remove('hidden');
++            document.getElementById('material-results').classList.add('hidden');
++        };
++        reader.readAsDataURL(file);
++    },
++
++    async analyzeMaterial() {
++        if (!this.currentMaterialBase64) return;
++
++        const loading = document.getElementById('material-loading');
++        const loadingText = document.getElementById('material-loading-text');
++        const results = document.getElementById('material-results');
++        const info = document.getElementById('material-info');
++
++        if (loading) loading.classList.remove('hidden');
++        if (loadingText) loadingText.textContent = "Analyzing material profile...";
++        if (results) results.classList.add('hidden');
++
++        try {
++            const data = await aiBrain.identifyMaterial(this.currentMaterialBase64);
++            
++            if (data) {
++                this.currentMaterialData = data;
++                info.innerHTML = `
++                    <p><span class="material-label">Category:</span> ${data.category || 'Unknown'}</p>
++                    <p><span class="material-label">Material:</span> ${data.material || 'Unknown'}</p>
++                    <p><span class="material-label">Profile:</span> ${data.profile || 'Unknown'}</p>
++                    <p><span class="material-label">Texture:</span> ${data.texture || 'Unknown'}</p>
++                    <p><span class="material-label">Color:</span> ${data.color || 'Unknown'}</p>
++                    <p style="margin-top: 10px; font-weight: 500; color: var(--primary-color);">Suggested Xactimate Code: ${data.xactimate_code || 'N/A'}</p>
++                `;
++                results.classList.remove('hidden');
++            } else {
++                alert("Could not identify material. Try a clearer photo.");
++            }
++        } catch (error) {
++            console.error("Material ID analysis error:", error);
++            alert("Error analyzing material. Please check your connection and API key.");
++        } finally {
++            if (loading) loading.classList.add('hidden');
++        }
++    },
++
++    async checkAvailability() {
++        if (!this.currentMaterialData) return;
++
++        const loading = document.getElementById('material-loading');
++        const loadingText = document.getElementById('material-loading-text');
++        const availSection = document.getElementById('availability-section');
++        const availStatus = document.getElementById('availability-status');
++
++        if (loading) loading.classList.remove('hidden');
++        if (loadingText) loadingText.textContent = "Checking discontinued status...";
++
++        try {
++            const description = `${this.currentMaterialData.material} ${this.currentMaterialData.profile} ${this.currentMaterialData.color}`;
++            const summary = await aiBrain.checkDiscontinued(description);
++            
++            availStatus.innerHTML = summary;
++            
++            // Add visual cue if discontinued
++            if (summary.toLowerCase().includes('discontinued') || summary.toLowerCase().includes('obsolete')) {
++                availStatus.className = 'availability-status discontinued';
++            } else {
++                availStatus.className = 'availability-status available';
++            }
++            
++            availSection.classList.remove('hidden');
++        } catch (error) {
++            console.error("Availability check error:", error);
++            alert("Error checking availability.");
++        } finally {
++            if (loading) loading.classList.add('hidden');
++        }
++    },
++
+     loadSettings() {
+         const saved = localStorage.getItem('APP_SETTINGS');
+         if (saved) {
+@@ -1011,6 +1138,125 @@ const app = {
+         const div = document.createElement('div');
+         div.textContent = str;
+         return div.innerHTML;
++    },
++
++    // -------------------------------------------------------------------------
++    // Material ID Logic
++    // -------------------------------------------------------------------------
++    resetMaterialID() {
++        this.currentMaterialBase64 = null;
++        const preview = document.getElementById('material-photo-preview');
++        const placeholder = document.querySelector('#material-camera-container .camera-placeholder');
++        const analyzeBtn = document.getElementById('btn-analyze-material');
++        const results = document.getElementById('material-results');
++        const availSection = document.getElementById('availability-section');
++
++        if (preview) preview.classList.add('hidden');
++        if (placeholder) placeholder.classList.remove('hidden');
++        if (analyzeBtn) analyzeBtn.classList.add('hidden');
++        if (results) results.classList.add('hidden');
++        if (availSection) availSection.classList.add('hidden');
++    },
++
++    handleMaterialPhoto(event) {
++        const file = event.target.files[0];
++        if (!file) return;
++
++        const reader = new FileReader();
++        reader.onload = (e) => {
++            const base64 = e.target.result;
++            this.currentMaterialBase64 = base64;
++            
++            const preview = document.getElementById('material-photo-preview');
++            if (preview) {
++                preview.src = base64;
++                preview.classList.remove('hidden');
++            }
++            
++            const placeholder = document.querySelector('#material-camera-container .camera-placeholder');
++            if (placeholder) placeholder.classList.add('hidden');
++            
++            const analyzeBtn = document.getElementById('btn-analyze-material');
++            if (analyzeBtn) analyzeBtn.classList.remove('hidden');
++            
++            const results = document.getElementById('material-results');
++            if (results) results.classList.add('hidden');
++        };
++        reader.readAsDataURL(file);
++    },
++
++    async analyzeMaterial() {
++        if (!this.currentMaterialBase64) return;
++
++        const loading = document.getElementById('material-loading');
++        const loadingText = document.getElementById('material-loading-text');
++        const results = document.getElementById('material-results');
++        const info = document.getElementById('material-info');
++
++        if (loading) loading.classList.remove('hidden');
++        if (loadingText) loadingText.textContent = "Analyzing material profile...";
++        if (results) results.classList.add('hidden');
++
++        try {
++            const data = await aiBrain.identifyMaterial(this.currentMaterialBase64);
++            
++            if (data) {
++                this.currentMaterialData = data;
++                if (info) {
++                    info.innerHTML = `
++                        <p><span class="material-label">Category:</span> ${data.category || 'Unknown'}</p>
++                        <p><span class="material-label">Material:</span> ${data.material || 'Unknown'}</p>
++                        <p><span class="material-label">Profile:</span> ${data.profile || 'Unknown'}</p>
++                        <p><span class="material-label">Texture:</span> ${data.texture || 'Unknown'}</p>
++                        <p><span class="material-label">Color:</span> ${data.color || 'Unknown'}</p>
++                        <p style="margin-top: 10px; font-weight: 500; color: var(--primary-color);">Suggested Xactimate Code: ${data.xactimate_code || 'N/A'}</p>
++                    `;
++                }
++                if (results) results.classList.remove('hidden');
++            } else {
++                alert("Could not identify material. Try a clearer photo.");
++            }
++        } catch (error) {
++            console.error("Material ID analysis error:", error);
++            alert("Error analyzing material. Please check your connection and API key.");
++        } finally {
++            if (loading) loading.classList.add('hidden');
++        }
++    },
++
++    async checkAvailability() {
++        if (!this.currentMaterialData) return;
++
++        const loading = document.getElementById('material-loading');
++        const loadingText = document.getElementById('material-loading-text');
++        const availSection = document.getElementById('availability-section');
++        const availStatus = document.getElementById('availability-status');
++
++        if (loading) loading.classList.remove('hidden');
++        if (loadingText) loadingText.textContent = "Checking discontinued status...";
++
++        try {
++            const description = `${this.currentMaterialData.material} ${this.currentMaterialData.profile} ${this.currentMaterialData.color}`;
++            const summary = await aiBrain.checkDiscontinued(description);
++            
++            if (availStatus) {
++                availStatus.innerHTML = summary;
++                
++                // Add visual cue if discontinued
++                if (summary.toLowerCase().includes('discontinued') || summary.toLowerCase().includes('obsolete')) {
++                    availStatus.className = 'availability-status discontinued';
++                } else {
++                    availStatus.className = 'availability-status available';
++                }
++            }
++            
++            if (availSection) availSection.classList.remove('hidden');
++        } catch (error) {
++            console.error("Availability check error:", error);
++            alert("Error checking availability.");
++        } finally {
++            if (loading) loading.classList.add('hidden');
++        }
+     }
+ };
+ 
