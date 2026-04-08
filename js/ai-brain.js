@@ -2,11 +2,14 @@ window.aiBrain = {
     apiUrl: 'https://api.x.ai/v1/chat/completions',
     
     getApiKey() {
+        // Source 1: User's manual input (cached)
         let key = localStorage.getItem('GROK_API_KEY');
-        if (!key) {
-            // Use the hardcoded system key if no user key is provided
-            key = 'xai-1dZkQTImZSpmm6clOdE6VIlhXuDwjpXmVjQsPPMPSrK9IJdu0Tb5mwxTJWo4cykYSZH8jd68WPdjulzk';
+        
+        // Source 2: Cloud-Sync (from app object)
+        if (!key && window.app && window.app.apiKey) {
+            key = window.app.apiKey;
         }
+        
         return key;
     },
     
@@ -137,7 +140,7 @@ Output ONLY the bulleted list, no conversational filler.`;
     apiKey: null, // To be loaded from Cloud/Local Sync
 
     async analyzeImage(base64DataUrl, promptOverride = null) {
-        const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required.");
 
         // Normalize to array for multi-vision support
@@ -198,7 +201,7 @@ Output ONLY the bulleted list, no conversational filler.`;
     async askPolicy(pdfText, question) {
         if (!pdfText.trim() || !question.trim()) return null;
         
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("Please save your API key in the Settings tab.");
 
         const systemPrompt = `You are a strict and highly knowledgeable insurance policy analyst. 
@@ -240,7 +243,7 @@ Cite the relevant section if possible.`;
     },
 
     async ocrPolicyPage(base64DataUrl) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         const base64Image = base64DataUrl.split(',')[1];
@@ -288,7 +291,7 @@ Cite the relevant section if possible.`;
     },
 
     async analyzeEstimate(base64DataUrl) {
-        const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         // Normalize to array for multi-page estimate support
@@ -352,7 +355,7 @@ Provide only the code list. If you are unsure of a code, provide the most likely
     },
 
     async identifyMaterial(base64DataUrl) {
-        const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         const base64Image = base64DataUrl.split(',')[1];
@@ -421,7 +424,7 @@ Return your response as a raw JSON object only:
     },
 
     async checkDiscontinued(description) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         const prompt = `You are an insurance claims resource specialist. 
@@ -462,7 +465,7 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
     async processWindshieldBrainDump(transcriptionText) {
         if (!transcriptionText) return null;
 
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         const prompt = `You are a professional claims adjuster's AI assistant. 
@@ -505,7 +508,7 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
     },
 
     async findNearbyPOIs(lat, lng) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         let area = "this location";
@@ -554,7 +557,7 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
     },
 
     async analyzeALEPhoto(base64DataUrl) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         const base64Image = base64DataUrl.split(',')[1];
@@ -601,7 +604,7 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
     },
 
     async processXactimate(prompt) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         try {
@@ -628,7 +631,7 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
     },
 
     async generateBatchVoicemailReport(voicemailsContext) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         try {
@@ -663,7 +666,7 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
     },
 
     async dictionarySearch(query) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
         const prompt = `You are a Master Xactimate Line Item Expert. 

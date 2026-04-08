@@ -457,10 +457,15 @@
                             <h3 style="margin-bottom: 10px; font-size: 1.1rem;">AI Brain Configuration</h3>
                             <div class="input-group">
                                 <label for="setting-api-key">xAI Grok API Key</label>
-                                <input type="password" id="setting-api-key" placeholder="xoxb-...">
-                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Required for AI tasks, vision, and policy chat.</small>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="password" id="setting-api-key" placeholder="xai-..." style="flex: 1;">
+                                    <button id="btn-sync-cloud" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="app.saveKeyToCloud()" title="Persist key in Supabase Cloud">
+                                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">cloud_upload</span> Sync
+                                    </button>
+                                </div>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Used for AI tasks, vision, and syncs across all your devices.</small>
                             </div>
-                            <button class="btn btn-secondary btn-block" onclick="app.saveApiKey()" style="margin-top: 10px;">Save API Key</button>
+                            <button class="btn btn-secondary btn-block" onclick="app.saveApiKey()" style="margin-top: 10px;">Save Local Only</button>
                         </div>
                         
                         <!-- Feedback & Privacy Card -->

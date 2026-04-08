@@ -246,5 +246,33 @@ window.db = {
         } catch (e) {
             console.error("Critical failure in logError:", e);
         }
+    },
+
+    // -------------------------------------------------------------------------
+    // User Profiles (Settings Sync)
+    // -------------------------------------------------------------------------
+    async getUserProfile(userId) {
+        const { data, error } = await this._getClient()
+            .from('user_profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+        if (error && error.code !== 'PGRST116') { // Ignore "not found"
+            console.error('Error fetching profile:', error);
+            return null;
+        }
+        return data;
+    },
+
+    async updateUserProfile(userId, data) {
+        const { error } = await this._getClient()
+            .from('user_profiles')
+            .upsert({
+                id: userId,
+                ...data,
+                updated_at: new Date().toISOString()
+            });
+        if (error) throw error;
+        return true;
     }
 };

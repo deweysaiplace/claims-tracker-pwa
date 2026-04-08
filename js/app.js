@@ -29,6 +29,33 @@ const app = {
         this.setupOfflineDetection();
         this.makeFabDraggable();
         this.setupRealtimeSync();
+
+        // Fetch Cloud Profile after auth is ready
+        auth.onAuthStateChange(async (user) => {
+            if (user) {
+                this.loadCloudProfile(user.id);
+            }
+        });
+    },
+
+    async loadCloudProfile(userId) {
+        try {
+            console.log("Syncing with Cloud...");
+            const profile = await db.getUserProfile(userId);
+            if (profile) {
+                if (profile.grok_api_key) {
+                    this.apiKey = profile.grok_api_key;
+                    localStorage.setItem('GROK_API_KEY', profile.grok_api_key);
+                }
+                if (profile.settings) {
+                    this.settings = { ...this.settings, ...profile.settings };
+                    this.applySettings();
+                }
+                console.log("Cloud Sync: Verified.");
+            }
+        } catch (e) {
+            console.error("Cloud Sync Failed:", e);
+        }
     },
 
     async loadXactimateCodes() {
@@ -291,8 +318,9 @@ const app = {
             const apiKeyInput = document.getElementById('setting-api-key');
             if (apiKeyInput) {
                 const stored = localStorage.getItem('GROK_API_KEY');
-                apiKeyInput.value = stored || '--- Hardcoded System Key Active ---';
-                if (!stored) apiKeyInput.style.opacity = '0.5';
+                apiKeyInput.value = stored || (this.apiKey ? '--- Cloud Key Active ---' : '');
+                if (!stored && this.apiKey) apiKeyInput.style.opacity = '0.5';
+                else apiKeyInput.style.opacity = '1.0';
             }
             this.generateAppQRCode();
         }
@@ -962,7 +990,7 @@ const app = {
             btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Extracting...';
             btn.disabled = true;
 
-            const apiKey = localStorage.getItem('GROK_API_KEY');
+            const apiKey = aiBrain.getApiKey();
             if (!apiKey) {
                 alert("Please save your API key in the Settings tab first.");
                 this.navigate('settings');
@@ -2270,6 +2298,38 @@ const app = {
             div.innerHTML = `<input type="checkbox" style="margin-top:4px;"> <span>${check}</span>`;
             list.appendChild(div);
         });
+    },
+
+    async saveKeyToCloud() {
+        const input = document.getElementById('setting-api-key');
+        if (!input) return;
+        const key = input.value.trim();
+        
+        if (!key || key.startsWith('---')) return alert("Enter a valid API key first.");
+        
+        const btn = document.getElementById('btn-sync-cloud');
+        const originalText = btn.innerHTML;
+        
+        try {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Syncing...';
+            
+            await db.updateUserProfile(auth.currentUser.id, {
+                grok_api_key: key
+            });
+            
+            this.apiKey = key;
+            localStorage.setItem('GROK_API_KEY', key);
+            
+            this.showToast("Key synced to cloud!");
+            input.style.opacity = '0.5';
+        } catch (e) {
+            console.error(e);
+            alert("Failed to sync to cloud. Check console.");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
 };
 
