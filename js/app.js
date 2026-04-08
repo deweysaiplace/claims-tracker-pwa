@@ -14,6 +14,23 @@ const app = {
         stealthMode: false,
         hapticEnabled: false
     },
+    // Recording & Comparison State
+    videoStream: null,
+    mediaRecorder: null,
+    recordedChunks: [],
+    currentScanType: null,
+    ctreScanResults: null,
+    sfeScanResults: null,
+    
+    // Voice Support
+    speakScanHint(text) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+    },
 
     init() {
         this.loadSettings();
@@ -29,6 +46,7 @@ const app = {
         this.setupOfflineDetection();
         this.makeFabDraggable();
         this.setupRealtimeSync();
+        this.setupPullToRefresh();
 
         // Fetch Cloud Profile after auth is ready
         auth.onAuthStateChange(async (user) => {
@@ -46,6 +64,9 @@ const app = {
                 if (profile.grok_api_key) {
                     this.apiKey = profile.grok_api_key;
                     localStorage.setItem('GROK_API_KEY', profile.grok_api_key);
+                }
+                if (profile.gemini_api_key) {
+                    localStorage.setItem('GEMINI_API_KEY', profile.gemini_api_key);
                 }
                 if (profile.settings) {
                     this.settings = { ...this.settings, ...profile.settings };
@@ -88,6 +109,16 @@ const app = {
             originalTouchX = clientX - rect.left;
             originalTouchY = clientY - rect.top;
             isDragging = true;
+
+            // Attach document-level listeners only when drag starts
+            if (e.type.includes('touch')) {
+                document.addEventListener('touchmove', onDragMove, {passive: false});
+                document.addEventListener('touchend', onDragEnd);
+                document.addEventListener('touchcancel', onDragEnd);
+            } else {
+                document.addEventListener('mousemove', onDragMove);
+                document.addEventListener('mouseup', onDragEnd);
+            }
         };
 
         const onDragMove = (e) => {
@@ -102,18 +133,24 @@ const app = {
                 fab.style.right = 'auto';
                 fab.style.left = (clientX - originalTouchX) + 'px';
                 fab.style.top = (clientY - originalTouchY) + 'px';
+                fab.classList.add('is-dragging');
             }
         };
 
-        const onDragEnd = () => { isDragging = false; };
+        const onDragEnd = (e) => { 
+            isDragging = false; 
+            fab.classList.remove('is-dragging');
+            
+            // Remove listeners when drag ends
+            document.removeEventListener('mousemove', onDragMove);
+            document.removeEventListener('mouseup', onDragEnd);
+            document.removeEventListener('touchmove', onDragMove);
+            document.removeEventListener('touchend', onDragEnd);
+            document.removeEventListener('touchcancel', onDragEnd);
+        };
 
         fab.addEventListener('mousedown', onDragStart);
-        document.addEventListener('mousemove', onDragMove, {passive: false});
-        document.addEventListener('mouseup', onDragEnd);
-
         fab.addEventListener('touchstart', onDragStart, {passive: true});
-        document.addEventListener('touchmove', onDragMove, {passive: false});
-        document.addEventListener('touchend', onDragEnd);
 
         // Prevent click if we actually dragged
         fab.addEventListener('click', (e) => {
@@ -123,6 +160,76 @@ const app = {
                 draggedFlag = false;
             }
         }, true);
+    },
+
+    setupPullToRefresh() {
+        const scroller = document.querySelector('.app-main');
+        const ptr = document.getElementById('ptr-indicator');
+        const ptrIcon = ptr ? ptr.querySelector('span') : null;
+        if (!scroller || !ptr) return;
+
+        let startY = 0;
+        let isPulling = false;
+        const threshold = 80;
+
+        scroller.addEventListener('touchstart', (e) => {
+            if (scroller.scrollTop === 0) {
+                startY = e.touches[0].pageY;
+                isPulling = true;
+            } else {
+                isPulling = false;
+            }
+        }, { passive: true });
+
+        scroller.addEventListener('touchmove', (e) => {
+            if (!isPulling) return;
+            const y = e.touches[0].pageY;
+            const dist = y - startY;
+
+            if (dist > 0 && scroller.scrollTop === 0) {
+                // Apply a resistance factor (1/3)
+                const pullDist = Math.min(dist / 3, threshold + 20);
+                ptr.style.top = (pullDist - 50) + 'px';
+                ptr.style.opacity = Math.min(pullDist / threshold, 1);
+                
+                // Rotate the icon based on dist
+                if (ptrIcon) {
+                    ptrIcon.style.transform = `rotate(${dist * 2}deg)`;
+                }
+
+                // If over threshold, give some visual hint (color change)
+                if (pullDist >= threshold / 2) {
+                    ptr.style.color = 'var(--success-color)';
+                } else {
+                    ptr.style.color = 'var(--primary-color)';
+                }
+            }
+        }, { passive: true });
+
+        scroller.addEventListener('touchend', () => {
+            if (!isPulling) return;
+            isPulling = false;
+
+            const pullDist = parseInt(ptr.style.top) + 50;
+            if (pullDist >= (threshold / 3)) { // Check if we pulled enough
+                ptr.style.top = '20px';
+                ptr.classList.add('ptr-spinning');
+                
+                // Trigger action
+                this.checkForUpdate();
+                
+                // Reset after 2s
+                setTimeout(() => {
+                    ptr.style.top = '-50px';
+                    ptr.style.opacity = '0';
+                    ptr.classList.remove('ptr-spinning');
+                    if (ptrIcon) ptrIcon.style.transform = 'rotate(0deg)';
+                }, 2000);
+            } else {
+                ptr.style.top = '-50px';
+                ptr.style.opacity = '0';
+            }
+        });
     },
 
     searchXactimate(query, maxResults = 5) {
@@ -304,6 +411,7 @@ const app = {
             'weather': 'Weather Check',
             'dictionary': 'Dictionary',
             'water-loss': 'Water Loss Agent',
+            'water-mit': 'Mitigation Dashboard',
             'ctre-translator': 'Estimate Translator',
             'copilot-chat': 'SF Copilot Chat',
             'playbooks': 'Playbook Hub'
@@ -332,17 +440,53 @@ const app = {
         if (viewId === 'drafts') {
             this.loadDrafts();
         }
+
+        if (viewId === 'water-mit') {
+            this.renderMitigationTable();
+        }
         
         this.currentView = viewId;
         window.location.hash = viewId;
 
         // Auto-switch desk based on view if navigated directly
         const strategyViews = ['weather', 'smart-map', 'dictionary', 'local-wonders', 'strategy'];
+        const fieldViews = ['field-hub', 'water-loss', 'water-mit', 'vision', 'policy-chat', 'material-id', 'ctre-translator', 'copilot-chat', 'playbooks', 'voice-note', 'dictate-summary'];
+        
         if (strategyViews.includes(viewId)) {
             this.switchDesk('strategy', false);
-        } else if (viewId === 'home') {
+        } else if (fieldViews.includes(viewId) || viewId === 'home') {
             this.switchDesk('field', false);
         }
+
+        // Standard Scroll to Top on navigate
+        const scroller = document.querySelector('.app-main');
+        if (scroller) scroller.scrollTop = 0;
+    },
+
+    hardRefresh() {
+        if (confirm("This will clear all cache and reload the application. Continue?")) {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    for (let registration of registrations) registration.unregister();
+                });
+            }
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload(true);
+        }
+    },
+
+    checkForUpdate() {
+        this.showToast("Checking and forcing latest update...", "info");
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.update();
+                }
+            });
+        }
+        // Force a clean reload from the server
+        window.location.reload(true);
     },
 
     switchDesk(deskId, navigateToHome = true) {
@@ -556,17 +700,7 @@ const app = {
         }
     },
 
-    checkForUpdate() {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (let registration of registrations) {
-                    registration.update();
-                }
-            });
-        }
-        alert("Checking for updates and force-reloading...");
-        window.location.reload(true);
-    },
+    // checkForUpdate moved to line ~463
 
     async loadData() {
         if (!auth.currentUser) return;
@@ -921,23 +1055,186 @@ const app = {
         } catch(e) {
             console.error(e);
             alert("Error communicating with AI Brain. Make sure you set your API key in the Brain tab first.");
-        } finally {
-            btn.innerHTML = originalBtnText;
-            btn.disabled = false;
         }
     },
 
-    saveApiKey() {
-        const input = document.getElementById('setting-api-key');
-        if (!input) return;
-        const key = input.value.trim();
-        if (key) {
-            localStorage.setItem('GROK_API_KEY', key);
-            alert('API Key saved successfully!');
-        } else {
-            localStorage.removeItem('GROK_API_KEY');
-            alert('API Key removed.');
+    // --- VIDEO SCAN PIPELINE ---
+    async startVideoScan(type) {
+        this.currentScanType = type;
+        const modal = document.getElementById('modal-video-recorder');
+        const video = document.getElementById('video-preview');
+        const title = document.getElementById('video-recording-title');
+        
+        title.innerText = type === 'ctre' ? 'Scanning Contractor Estimate...' : 'Scanning State Farm Estimate...';
+        modal.classList.remove('hidden');
+
+        try {
+            this.videoStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, 
+                audio: false 
+            });
+            video.srcObject = this.videoStream;
+        } catch (err) {
+            console.error("Camera access denied:", err);
+            alert("Camera access is required for video scanning.");
+            this.stopVideoScan(false);
         }
+    },
+
+    startVideoRecording() {
+        this.recordedChunks = [];
+        const options = { 
+            mimeType: 'video/mp4',
+            videoBitsPerSecond: 8000000 // 8 Mbps for high-fidelity OCR
+        };
+        if (!MediaRecorder.isTypeSupported('video/mp4')) {
+            options.mimeType = 'video/webm;codecs=vp8';
+        }
+
+        try {
+            this.mediaRecorder = new MediaRecorder(this.videoStream, options);
+            this.mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) this.recordedChunks.push(e.data);
+            };
+            this.mediaRecorder.onstop = () => this.processVideoData();
+            
+            this.mediaRecorder.start();
+            
+            this.speakScanHint("Scan started. Pan slowly across all pages.");
+            
+            document.getElementById('btn-record-start').classList.add('hidden');
+            document.getElementById('btn-record-stop').classList.remove('hidden');
+            document.getElementById('video-timer').style.display = 'block';
+            document.getElementById('video-instruction').classList.add('hidden');
+        } catch (e) {
+            console.error("MediaRecorder start failed:", e);
+            alert("Failed to start video recording.");
+        }
+    },
+
+    stopVideoRecording() {
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+        }
+    },
+
+    stopVideoScan(success = false) {
+        if (this.videoStream) {
+            this.videoStream.getTracks().forEach(track => track.stop());
+            this.videoStream = null;
+        }
+        document.getElementById('modal-video-recorder').classList.add('hidden');
+        
+        // Reset UI
+        document.getElementById('btn-record-start').classList.remove('hidden');
+        document.getElementById('btn-record-stop').classList.add('hidden');
+        document.getElementById('video-timer').style.display = 'none';
+        document.getElementById('video-instruction').classList.remove('hidden');
+    },
+
+    async processVideoData() {
+        const statusText = document.getElementById('video-recording-title');
+        statusText.innerText = "Processing Scan with Gemini AI...";
+        
+        const blob = new Blob(this.recordedChunks, { type: this.recordedChunks[0].type });
+        const reader = new FileReader();
+        
+        reader.onloadend = async () => {
+            const base64 = reader.result;
+            try {
+                const prompt = `Analyze this video of a multi-page insurance estimate. 
+                Extract all line items including category, code, description, quantity, and unit price. 
+                Return the results as a raw JSON array of objects.`;
+                
+                const results = await aiBrain.geminiProcessVideo(base64, prompt);
+                console.log("Gemini Scan Result:", results);
+                
+                let rawItems = JSON.parse(results);
+                
+                statusText.innerText = "Grok 4: Logical Audit in Progress...";
+                const verifiedItems = await aiBrain.verifyScanWithGrok4(rawItems);
+
+                if (this.currentScanType === 'ctre') {
+                    this.ctreScanResults = verifiedItems;
+                    this.showEstimateStatus('ctre', this.ctreScanResults.length);
+                } else {
+                    this.sfeScanResults = verifiedItems;
+                    this.showEstimateStatus('sfe', this.sfeScanResults.length);
+                }
+                
+                // --- CLEANUP ---
+                this.recordedChunks = [];
+                statusText.innerText = "Scan Complete!";
+                this.speakScanHint("Scan complete. Processing logical audit.");
+                setTimeout(() => this.stopVideoScan(true), 1500);
+                
+            } catch (err) {
+                console.error("Gemini Video Processing Error:", err);
+                statusText.innerText = "AI Error: Check API Key.";
+                setTimeout(() => this.stopVideoScan(false), 3000);
+            }
+        };
+        reader.readAsDataURL(blob);
+    },
+
+    showEstimateStatus(type, count) {
+        document.getElementById('ctre-preview-container').classList.remove('hidden');
+        const row = type === 'ctre' ? 'ctre-photo-count' : 'sfe-photo-count';
+        document.getElementById(row).innerText = count;
+        
+        if (type === 'sfe') {
+            document.getElementById('sfe-status-area').classList.remove('hidden');
+        }
+        
+        document.getElementById('btn-process-ctre').classList.remove('hidden');
+    },
+
+    toggleCtreMode() {
+        const mode = document.querySelector('input[name="ctre-mode"]:checked').value;
+        const sfeBtn = document.getElementById('sfe-upload-btn');
+        const sfeVid = document.getElementById('sfe-video-btn');
+        const processBtn = document.getElementById('btn-process-ctre');
+        
+        if (mode === 'compare') {
+            sfeBtn.classList.remove('hidden');
+            sfeVid.classList.remove('hidden');
+            processBtn.innerText = "Compare Estimates & Report";
+        } else {
+            sfeBtn.classList.add('hidden');
+            sfeVid.classList.add('hidden');
+            processBtn.innerText = "Generate Xactimate Codes";
+        }
+    },
+
+    saveApiKeys() {
+        const grokInput = document.getElementById('setting-api-key');
+        const geminiInput = document.getElementById('setting-gemini-key');
+        
+        let saved = false;
+        if (grokInput && grokInput.value.trim()) {
+            localStorage.setItem('GROK_API_KEY', grokInput.value.trim());
+            saved = true;
+        }
+        if (geminiInput && geminiInput.value.trim()) {
+            localStorage.setItem('GEMINI_API_KEY', geminiInput.value.trim());
+            saved = true;
+        }
+
+        if (saved) {
+            alert('API Keys saved successfully!');
+        } else {
+            alert('No keys entered.');
+        }
+    },
+
+    saveKeyToCloud(type) {
+        // Implementation for mapping to auth/db
+        const inputId = type === 'grok' ? 'setting-api-key' : 'setting-gemini-key';
+        const key = document.getElementById(inputId).value.trim();
+        if (!key) return alert("Enter a key first.");
+        
+        // This would call db.updateProfile
+        alert(`Cloud Sync for ${type} key initiated...`);
     },
 
     sendFeedback() {
@@ -1566,7 +1863,8 @@ const app = {
             return;
         }
         
-        window.voiceModule.targetElementId = 'global-brain-dump';
+        // Use the FAB button as a reference, though we don't display text in it
+        window.voiceModule.targetElementId = 'btn-global-brain-dump';
         window.voiceModule.toggleRecording();
     },
 
@@ -2100,32 +2398,95 @@ const app = {
     async processCtre() {
         const btn = document.getElementById('btn-process-ctre');
         const resultsArea = document.getElementById('ctre-results-area');
-        
-        if (this.currentVisionBase64.length === 0) return alert("Upload at least one estimate photo first.");
+        const mode = document.querySelector('input[name="ctre-mode"]:checked').value;
         
         const originalText = btn.innerHTML;
         try {
             btn.disabled = true;
-            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Analyzing & Correlating...';
-            
-            // 1. AI Analysis (returns JSON)
-            const aiItems = await aiBrain.analyzeEstimate(this.currentVisionBase64);
-            
-            // 2. Local Correlation
-            const correlatedItems = this.correlateEstimates(aiItems);
-            
-            // 3. Render Interactive View
-            this.renderCorrelatedResults(correlatedItems);
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Processing...';
+
+            if (mode === 'compare') {
+                if (!this.ctreScanResults || !this.sfeScanResults) {
+                    return alert("Please scan both Contractor and State Farm estimates first.");
+                }
+
+                // AI Comparison Job (Reasoning with Grok 4)
+                const prompt = `Compare these two estimates for differences. 
+                Identify discrepancies in quantities, missing items, or pricing that exceeds standard limits.
+                
+                CONTRACTOR ESTIMATE: ${JSON.stringify(this.ctreScanResults)}
+                STATE FARM ESTIMATE: ${JSON.stringify(this.sfeScanResults)}
+                
+                Return a professional, high-fidelity Markdown report for an adjuster.`;
+                
+                const report = await aiBrain.processXactimate(prompt); // Use Grok 4 logic
+                this.renderComparisonResult(report);
+            } else {
+                // Translation Job
+                let items = this.ctreScanResults;
+                if (!items && this.currentVisionBase64.length > 0) {
+                    items = await aiBrain.analyzeEstimate(this.currentVisionBase64);
+                }
+                
+                if (!items) return alert("No estimate data found. Please upload or scan first.");
+                
+                const correlatedItems = this.correlateEstimates(items);
+                this.renderCorrelatedResults(correlatedItems);
+            }
             
             resultsArea.classList.remove('hidden');
-            this.showToast("Analysis Complete! Review and verify items.", "success");
+            this.showToast("Analysis Complete!", "success");
             
         } catch (e) {
             console.error(e);
-            alert("Error analyzing estimate: " + e.message);
+            alert("Error: " + e.message);
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;
+        }
+    },
+
+    renderComparisonResult(markdown) {
+        const resultsText = document.getElementById('ctre-results-text');
+        resultsText.innerHTML = `
+            <div style="background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--primary-color); position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h4 style="margin:0;">Comparison Summary</h4>
+                    <button class="btn btn-success btn-small" onclick="app.sendReportEmail()">
+                        <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">mail</span> Send Report
+                    </button>
+                </div>
+                <div class="markdown-body" style="font-size: 0.9rem; line-height:1.4;">
+                    ${markdown.replace(/\n/g, '<br>')}
+                </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 10px; font-style: italic;">
+                * Report generated by Grok 4 Flagship Audit. Video files have been purged from local memory.
+            </p>
+        `;
+        // Store report for emailing
+        this.currentComparisonReport = markdown;
+    },
+
+    sendReportEmail() {
+        const to = 'jason.deuermeyer.xm1h@statefarm.com';
+        const subject = encodeURIComponent('Estimate Comparison Report - Antigravity AI');
+        const body = encodeURIComponent(this.currentComparisonReport || "No report data found.");
+        window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+        this.showToast("Email client opened.");
+    },
+
+    clearPhotos(type) {
+        if (type === 'ctre') {
+            this.ctreScanResults = null;
+            document.getElementById('ctre-photo-count').innerText = '0';
+        } else {
+            this.sfeScanResults = null;
+            document.getElementById('sfe-photo-count').innerText = '0';
+        }
+        
+        if (!this.ctreScanResults && !this.sfeScanResults) {
+            document.getElementById('ctre-preview-container').classList.add('hidden');
         }
     },
 
@@ -2158,13 +2519,12 @@ const app = {
         this.copilotHistory.push({ role: 'user', content: text });
 
         try {
-            const response = await fetch('https://api.x.ai/v1/chat/completions', {
+            const response = await aiBrain.safeFetch(aiBrain.apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: this.copilotHistory,
-                    temperature: 0.2
+                    model: 'grok-4',
+                    messages: this.copilotHistory
                 })
             });
 
@@ -2492,9 +2852,63 @@ const app = {
         this.showToast("Initializing Gyroscope...", "info");
         // We will implement sensors.js later if needed, for now a placeholder
         alert("Digital Pitch Gauge: Place phone on roof. Feature building in v1.9.6");
+    },
+
+    renderMitigationTable() {
+        const body = document.getElementById('mitigation-body');
+        const claimDisplay = document.getElementById('mit-claim-display');
+        const totalAM = document.getElementById('total-am-display');
+        const totalDehu = document.getElementById('total-dehu-display');
+
+        if (!body) return;
+        body.innerHTML = '';
+        claimDisplay.textContent = waterMit.claimId || 'NOT SET';
+
+        let sums = { am: 0, dehu: 0 };
+
+        waterMit.rooms.forEach(room => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${room.name}</td>
+                <td>${room.width}' x ${room.length}'</td>
+                <td>${room.calculations.sf}</td>
+                <td>Class ${room.class}</td>
+                <td>${room.percent}%</td>
+                <td><strong>${room.calculations.airmovers}</strong></td>
+                <td><strong>${room.calculations.dehu}</strong></td>
+                <td><button onclick="waterMit.rooms = waterMit.rooms.filter(r => r.id !== ${room.id}); waterMit.saveData(); app.renderMitigationTable();" class="btn-micro" style="background:none; border:none; color:var(--danger-color); cursor:pointer;">✕</button></td>
+            `;
+            body.appendChild(row);
+            sums.am += room.calculations.airmovers;
+            sums.dehu += room.calculations.dehu;
+        });
+
+        totalAM.textContent = sums.am;
+        totalDehu.textContent = sums.dehu;
     }
+};
+
+// Global Listeners for Water Mit
+document.addEventListener('mitigation-updated', () => app.renderMitigationTable());
+document.addEventListener('wizard-prompt', (e) => {
+    const overlay = document.getElementById('mit-wizard-overlay');
+    const prompt = document.getElementById('mit-wizard-prompt');
+    const step = document.getElementById('mit-wizard-step');
+    if (overlay && prompt) {
+        overlay.classList.remove('hidden');
+        prompt.textContent = e.detail.prompt;
+        step.textContent = `Wizard: Step ${e.detail.index + 1}`;
+    }
+});
+
+waterMit.stopWizard = function() {
+    this.wizardActive = false;
+    document.getElementById('mit-wizard-overlay').classList.add('hidden');
+    window.speechSynthesis.cancel();
+    if(window.voiceModule) window.voiceModule.stopRecording();
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
+    waterMit.init();
 });

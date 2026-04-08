@@ -38,7 +38,7 @@
                 <div class="auth-card" style="text-align: center; max-width: 320px; width: 100%; padding: 20px; background: var(--bg-surface); border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
                     <div style="font-size: 3rem; margin-bottom: 20px;">🛡️</div>
                     <h2 style="margin-bottom: 5px;">The Claims Experience</h2>
-                    <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.9rem;">App Version v1.5.2</p>
+                    <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.9rem;">App Version v2.0.0 (Flagship AI)</p>
                     
                     <form id="login-form">
                         <div class="input-group" style="text-align: center;">
@@ -63,50 +63,38 @@
             </div>
         </div>
 
-        <!-- Main App Content (Always visible now) -->
+         <!-- Main App Content (Clean 3-Row Grid Shell) -->
         <div id="main-app" class="app-layout hidden">
-            <!-- Sidebar Navigation -->
-            <nav class="sidebar-nav">
-                <button class="nav-desk-btn active" id="btn-tab-field" onclick="app.switchDesk('field')">
-                    <span class="material-symbols-outlined">construction</span>
-                    <span>Field</span>
-                </button>
-                <button class="nav-desk-btn" id="btn-tab-strategy" onclick="app.switchDesk('strategy')">
-                    <span class="material-symbols-outlined">map</span>
-                    <span>Strategy</span>
-                </button>
-                <button class="nav-desk-btn" id="btn-tab-hub" onclick="app.navigate('field-hub')">
-                    <span class="material-symbols-outlined">analytics</span>
-                    <span>Field Hub</span>
-                </button>
-                <div style="margin-top: auto;">
-                    <button class="nav-desk-btn" onclick="app.navigate('settings')" style="opacity: 0.6;">
+            <!-- Row 1: Header -->
+            <header class="app-header">
+                <div class="header-title" style="display: flex; align-items: baseline; gap: 8px;">
+                    <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">The Claims Experience</span>
+                    <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75rem; opacity: 0.8;">
+                        <span id="sync-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #4caf50; display: inline-block;"></span>
+                        <span id="sync-status-text">Connected</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" onclick="app.syncAllData()" title="Sync Data">
+                        <span class="material-symbols-outlined">sync</span>
+                    </button>
+                    <button class="icon-btn" onclick="app.navigate('settings')" title="Settings">
                         <span class="material-symbols-outlined">settings</span>
                     </button>
                 </div>
-            </nav>
+            </header>
 
-            <div class="main-content">
-                <div id="offline-banner" class="hidden">⚠️ Offline Mode - Working from Cache</div>
-                <!-- Header -->
-                <header class="app-header">
-                    <div class="header-title" style="display: flex; align-items: baseline; gap: 8px;">
-                        <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">The Claims Experience</span>
-                        <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75rem; opacity: 0.8;">
-                            <span id="sync-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #4caf50; display: inline-block;"></span>
-                            <span id="current-view-title">v1.8.5</span>
-                        </div>
-                    </div>
-                    <div class="header-actions">
-                        <button id="btn-logout" class="icon-btn" aria-label="Logout" onclick="window.supabaseClient.auth.signOut()">
-                            <span class="material-symbols-outlined">logout</span>
-                        </button>
-                    </div>
-                </header>
-
-            <!-- Views -->
+            <!-- Row 2: Main Scroller -->
             <main class="app-main">
+                <div id="offline-banner" class="hidden">⚠️ Offline Mode - Working from Cache</div>
+                
+                <!-- Pull to Refresh Indicator -->
+                <div id="ptr-indicator" class="ptr-indicator">
+                    <span class="material-symbols-outlined">sync</span>
+                </div>
+
                 <!-- Home View -->
+
                 <section id="view-home" class="view active-view">
                     <div class="quick-actions">
                         <button class="action-card" onclick="app.navigate('water-loss')" style="grid-column: span 2; background: linear-gradient(135deg, rgba(0,122,255,0.1), rgba(0,200,255,0.05)); border: 1px solid rgba(0,122,255,0.3);">
@@ -193,12 +181,9 @@
                             <h3>Estimate Drafts</h3>
                             <p>Stored Codes</p>
                         </button>
+                    </div> <!-- End Quick Actions -->
+                </section> <!-- End View Home -->
 
-
-
-                    </div>
-
-                    </div>
 
                     <!-- Field Hub View (OneClick-Lite) -->
                     <section id="view-field-hub" class="view">
@@ -248,6 +233,78 @@
                         </div>
                     </section>
 
+                    <!-- Water Mitigation View -->
+                    <section id="view-water-mit" class="view">
+                        <div class="view-content voice-container">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <div>
+                                    <h2 style="margin: 0;">Mitigation Dashboard</h2>
+                                    <p class="subtitle">ANSI/IICRC S500 2021 Scribe</p>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-micro" onclick="waterMit.emailReport()" title="Email Report">
+                                        <span class="material-symbols-outlined">mail</span>
+                                    </button>
+                                    <button class="btn-micro" onclick="waterMit.generatePDF()" title="Download PDF">
+                                        <span class="material-symbols-outlined">download</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Wizard Status Overlay -->
+                            <div id="mit-wizard-overlay" class="hidden" style="margin-top: 15px; width: 100%; padding: 15px; background: var(--primary-color); color: white; border-radius: 12px; display: flex; align-items: center; gap: 15px; animation: pulse 2s infinite;">
+                                <span class="material-symbols-outlined">mic</span>
+                                <div style="flex: 1;">
+                                    <div id="mit-wizard-step" style="font-size: 0.75rem; opacity: 0.8; text-transform: uppercase; font-weight: bold;">Step 1</div>
+                                    <div id="mit-wizard-prompt" style="font-weight: 600;">Listening for Claim ID...</div>
+                                </div>
+                                <button onclick="waterMit.stopWizard()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">Cancel</button>
+                            </div>
+
+                            <div class="wl-hub" style="margin-top: 15px; width: 100%;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: var(--bg-surface-light); border-radius: 12px 12px 0 0; border: 1px solid var(--border-color); border-bottom: none;">
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                                        <span class="material-symbols-outlined" style="font-size: 16px;">label</span>
+                                        CLAIM: <span id="mit-claim-display" style="color: var(--text-primary); font-weight: bold;">NOT SET</span>
+                                    </div>
+                                    <button class="btn-micro" onclick="waterMit.startWizard()" style="background: var(--primary-color); color: white; border: none; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">
+                                        🎙️ START SCRIBE
+                                    </button>
+                                </div>
+                                
+                                <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 0 0 12px 12px; background: var(--bg-surface);">
+                                    <table class="review-table" style="min-width: 600px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Room</th>
+                                                <th>Dims</th>
+                                                <th>SF</th>
+                                                <th>Class</th>
+                                                <th>% Wet</th>
+                                                <th>AMs</th>
+                                                <th>Dehu</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="mitigation-body">
+                                            <!-- Injected Rooms -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div id="mit-totals-bar" style="margin-top: 15px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div style="background: rgba(0,255,122,0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.7rem; color: var(--success-color); font-weight: bold;">TOTAL AIRMOVERS</div>
+                                    <div id="total-am-display" style="font-size: 1.5rem; font-weight: 800;">0</div>
+                                </div>
+                                <div style="background: rgba(0,122,255,0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 0.7rem; color: #007aff; font-weight: bold;">TOTAL DEHU PINTS</div>
+                                    <div id="total-dehu-display" style="font-size: 1.5rem; font-weight: 800;">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
                     <!-- Code Breaker Modal -->
                     <div id="modal-code-breaker" class="modal hidden">
                         <div class="modal-content" style="max-height: 85vh; display: flex; flex-direction: column;">
@@ -271,17 +328,7 @@
                         </div>
                     </div>
 
-                    <div class="dashboard-widgets">
-                        <div class="widget">
-                            <div class="widget-header">
-                                <h3>Active Claims</h3>
-                                <button class="text-btn" onclick="app.navigate('claims')">View All</button>
-                            </div>
-                            <ul id="active-claims-list" class="simple-list">
-                                <li class="empty-state">Loading...</li>
-                            </ul>
-                        </div>
-                    </div>
+                    <!-- Removed Active Claims Widget for stability -->
                 </section>
 
                 <!-- Tasks View -->
@@ -536,13 +583,42 @@
                                 <label for="setting-api-key">xAI Grok API Key</label>
                                 <div style="display: flex; gap: 8px;">
                                     <input type="password" id="setting-api-key" placeholder="xai-..." style="flex: 1;">
-                                    <button id="btn-sync-cloud" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="app.saveKeyToCloud()" title="Persist key in Supabase Cloud">
+                                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="app.saveKeyToCloud('grok')" title="Persist Grok key">
                                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">cloud_upload</span> Sync
                                     </button>
                                 </div>
-                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Used for AI tasks, vision, and syncs across all your devices.</small>
                             </div>
-                            <button class="btn btn-secondary btn-block" onclick="app.saveApiKey()" style="margin-top: 10px;">Save Local Only</button>
+                            <div class="input-group" style="margin-top: 15px;">
+                                <label for="setting-gemini-key">Google Gemini API Key</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="password" id="setting-gemini-key" placeholder="AIza..." style="flex: 1;">
+                                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="app.saveKeyToCloud('gemini')" title="Persist Gemini key">
+                                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">cloud_upload</span> Sync
+                                    </button>
+                                </div>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Used for high-speed video scans and multi-page estimates.</small>
+                            </div>
+                            <button class="btn btn-secondary btn-block" onclick="app.saveApiKeys()" style="margin-top: 10px;">Save Keys Locally</button>
+                        </div>
+                        
+                        <!-- Antigravity Bridge Section -->
+                        <div style="margin-top: 20px; background: linear-gradient(135deg, var(--bg-surface-light), #1a1a2e); padding: 20px; border-radius: 12px; border: 1px solid var(--primary-color); box-shadow: 0 8px 16px rgba(0,0,0,0.4);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                <span class="material-symbols-outlined" style="color: var(--primary-color); font-size: 28px;">cell_tower</span>
+                                <h3 style="font-size: 1.2rem; margin: 0; letter-spacing: 0.5px;">Antigravity Remote Bridge</h3>
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px; text-align: left; line-height: 1.4;">
+                                Link your phone to control this workspace from the field. Use your phone as a remote mic, camera, and status monitor.
+                            </p>
+                            
+                            <div style="background: var(--bg-dark); padding: 15px; border-radius: 8px; border: 1px dashed var(--border-color); text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Your Pairing Code</div>
+                                <div id="display-pairing-code" style="font-size: 2.2rem; font-weight: 800; color: var(--primary-color); letter-spacing: 5px; font-family: monospace;">------</div>
+                            </div>
+                            
+                            <button class="btn btn-outline btn-block" onclick="app.checkForUpdate()" style="margin-top: 15px; border: 1px solid var(--border-color); font-size: 0.8rem; background: transparent; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">sync</span> Reset Bridge Connection
+                            </button>
                         </div>
                         
                         <!-- Feedback & Privacy Card -->
@@ -567,7 +643,7 @@
                         </div>
                         
                          <div style="margin-top: 30px; text-align: center; color: var(--text-secondary); font-size: 0.75rem;">
-                             App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.8.5 (Feedback Loop)</span><br>
+                             App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.9.1 (Remote-Ready)</span><br>
                              Engine: Grok-4.20 Field Expert
                          </div>
                     </div>
@@ -650,10 +726,20 @@
                                     <input type="file" id="ctre-file-input" accept="image/*,application/pdf" multiple style="display: none;" onchange="app.handleCtreUpload(event, 'ctre')">
                                 </button>
                                 
+                                <button class="wl-action-btn" id="btn-video-ctre" onclick="app.startVideoScan('ctre')" style="border: 2px solid var(--accent-color);">
+                                    <span class="material-symbols-outlined" style="color: var(--accent-color);">video_camera_back</span>
+                                    <span style="font-weight:600; font-size:0.9rem;">Video Scan CTRE</span>
+                                </button>
+
                                 <button class="wl-action-btn hidden" id="sfe-upload-btn" onclick="document.getElementById('sfe-file-input').click()">
                                     <span class="material-symbols-outlined">add_photo_alternate</span>
                                     <span style="font-weight:600; font-size:0.9rem;">Upload SFE</span>
                                     <input type="file" id="sfe-file-input" accept="image/*,application/pdf" multiple style="display: none;" onchange="app.handleCtreUpload(event, 'sfe')">
+                                </button>
+
+                                <button class="wl-action-btn hidden" id="sfe-video-btn" onclick="app.startVideoScan('sfe')" style="border: 2px solid var(--accent-color);">
+                                    <span class="material-symbols-outlined" style="color: var(--accent-color);">video_file</span>
+                                    <span style="font-weight:600; font-size:0.9rem;">Video Scan SFE</span>
                                 </button>
                             </div>
                             
@@ -1018,10 +1104,9 @@
                     </div>
                 </section>
 
-            </div><!-- End Main Content -->
-        </div><!-- End App Layout -->
+            </main> <!-- Row 2 End: Main Scroller -->
 
-            <!-- Bottom Navigation -->
+            <!-- Row 3: Bottom Navigation -->
             <nav class="bottom-nav">
                 <a href="#" class="nav-item active" data-target="home" onclick="app.navigate('home')">
                     <span class="material-symbols-outlined">home</span>
@@ -1211,17 +1296,20 @@
     </div>
 
     <!-- Hidden Version Track -->
-    <div id="app-version" style="display:none">v1.8.5</div>
+    <div id="app-version" style="display:none">v1.9.0</div>
     
     <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <script src="js/supabase-client.js?v=20"></script>
-    <script src="js/auth.js?v=20"></script>
-    <script src="js/voice.js?v=20"></script>
-    <script src="js/ai-brain.js?v=20"></script>
-    <script src="js/water-loss-agent.js?v=1"></script>
-    <script src="js/app.js?v=20"></script>
+    <script src="js/supabase-client.js?v=25"></script>
+    <script src="js/auth.js?v=25"></script>
+    <script src="js/voice.js?v=25"></script>
+    <script src="js/ai-brain.js?v=25"></script>
+    <script src="js/water-loss-agent.js?v=25"></script>
+    <script src="js/water-mit.js?v=25"></script>
+    <script src="js/remote-bridge.js?v=25"></script>
+    <script src="js/app.js?v=25"></script>
     
     <!-- Register Service Worker -->
     <script>
@@ -1234,5 +1322,33 @@
             });
         }
     </script>
-</body>
+        <!-- Video Recorder Modal -->
+        <div id="modal-video-recorder" class="modal hidden" style="z-index: 9999; background: #000;">
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column;">
+                <div style="padding: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.5);">
+                    <h3 style="color: white; margin: 0; font-size: 1.1rem;" id="video-recording-title">Scanning Estimate...</h3>
+                    <button class="icon-btn" onclick="app.stopVideoScan(false)" style="color: white;"><span class="material-symbols-outlined">close</span></button>
+                </div>
+                
+                <div style="flex: 1; position: relative; overflow: hidden; background: #111;">
+                    <video id="video-preview" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <div id="video-timer" style="position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 5px 15px; border-radius: 20px; font-family: monospace; font-size: 1.2rem; display: none;">00:00</div>
+                    <div id="video-instruction" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; width: 80%; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 12px;">
+                        <span class="material-symbols-outlined" style="font-size: 3rem; margin-bottom: 10px;">slow_motion_video</span>
+                        <p style="margin: 0;">Pan slowly across all pages of the estimate. Ensure text is clear and readable.</p>
+                    </div>
+                </div>
+
+                <div style="padding: 30px; display: flex; justify-content: center; background: rgba(0,0,0,0.5);">
+                    <button id="btn-record-start" class="btn btn-danger" style="width: 70px; height: 70px; border-radius: 50%; border: 5px solid white; display: flex; align-items: center; justify-content: center;" onclick="app.startVideoRecording()">
+                        <div style="width: 25px; height: 25px; background: white; border-radius: 50%;"></div>
+                    </button>
+                    <button id="btn-record-stop" class="btn btn-danger hidden" style="width: 70px; height: 70px; border-radius: 50%; border: 5px solid white; display: flex; align-items: center; justify-content: center;" onclick="app.stopVideoRecording()">
+                        <div style="width: 25px; height: 25px; background: white; border-radius: 4px;"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </body>
 </html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claims-tracker-v1.8.5';
+const CACHE_NAME = 'claims-tracker-v1.9.1';
 const ASSETS = [
   './',
   './index.html',
@@ -39,15 +39,16 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // Clone and cache the response
-        const resClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, resClone);
-        });
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+    caches.match(event.request).then(cachedResponse => {
+      const fetchPromise = fetch(event.request).then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200) {
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, networkResponse.clone());
+          });
+        }
+        return networkResponse;
+      });
+      return cachedResponse || fetchPromise;
+    })
   );
 });

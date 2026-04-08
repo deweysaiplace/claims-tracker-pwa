@@ -238,18 +238,19 @@ NEVER
         messages.push({ role: 'user', content: contentBlock });
 
         try {
-            const response = await fetch('https://api.x.ai/v1/chat/completions', {
+            const response = await window.aiBrain.safeFetch('https://api.x.ai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: messages,
-                    temperature: 0.2
+                    model: 'grok-4',
+                    messages: messages
                 })
             });
+
+            const data = await response.json();
 
             if (!response.ok) {
                 const errText = await response.text();

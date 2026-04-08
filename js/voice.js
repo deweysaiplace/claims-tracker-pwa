@@ -43,6 +43,7 @@ window.voiceModule = {
         };
 
         this.recognition.onend = () => {
+            console.log("Speech recognition stopped.");
             this.isRecording = false;
             this.updateUIStatus(false);
             
@@ -50,6 +51,13 @@ window.voiceModule = {
             if (this.targetElementId === 'global-brain-dump') {
                 if (window.app && typeof window.app.finishBrainDump === 'function') {
                     window.app.finishBrainDump(this.finalTranscript);
+                }
+            }
+            
+            // Mitigation Wizard Hook
+            if (this.targetElementId === 'mitigation-wizard') {
+                if (window.waterMit && typeof window.waterMit.handleVoiceInput === 'function') {
+                    window.waterMit.handleVoiceInput(this.finalTranscript);
                 }
             }
         };
@@ -119,11 +127,19 @@ window.voiceModule = {
 
     stopRecording() {
         if (this.recognition && this.isRecording) {
+            console.log("Intentional stop requested...");
             // Haptic Feedback
             if (window.navigator && window.navigator.vibrate) {
                 window.navigator.vibrate([30, 30]); // Double pulse tap
             }
             this.recognition.stop();
+            // Force reset state in case onend takes too long on some browsers
+            setTimeout(() => {
+                if (this.isRecording) {
+                    this.isRecording = false;
+                    this.updateUIStatus(false);
+                }
+            }, 500);
         }
     },
 

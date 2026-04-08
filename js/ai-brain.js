@@ -1,5 +1,6 @@
 window.aiBrain = {
     apiUrl: 'https://api.x.ai/v1/chat/completions',
+    geminiApiUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent',
     
     getApiKey() {
         // Source 1: User's manual input (cached)
@@ -11,6 +12,34 @@ window.aiBrain = {
         }
         
         return key;
+    },
+    
+    getGeminiApiKey() {
+        return localStorage.getItem('GEMINI_API_KEY') || null;
+    },
+
+    async safeFetch(url, options, retries = 3) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url, options);
+                if (response.status === 429) { // Rate limit
+                    const wait = Math.pow(2, i) * 1000;
+                    console.warn(`Rate limited. Retrying in ${wait}ms...`);
+                    await new Promise(r => setTimeout(r, wait));
+                    continue;
+                }
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(`API Error (${response.status}): ${error}`);
+                }
+                return response;
+            } catch (err) {
+                if (i === retries - 1) throw err;
+                const wait = Math.pow(2, i) * 1000;
+                console.warn(`Fetch error. Retrying in ${wait}ms...`, err);
+                await new Promise(r => setTimeout(r, wait));
+            }
+        }
     },
     
     async processCommand(text, activeClaims) {
@@ -32,12 +61,12 @@ window.aiBrain = {
             }));
         }
 
-        const systemPrompt = `You are the AI Brain for a claims adjuster app. 
+        const systemPrompt = \You are the AI Brain for a claims adjuster app. 
 You are given the user's spoken command and a list of their active claims.
 Your job is to determine what action they want to perform and on which claim.
 
 User's Active Claims:
-${JSON.stringify(safeClaims)}
+\
 
 ACTIONS YOU CAN TAKE:
 1. "create_task": If the user wants to add a task, reminder, or note to do something (e.g. "Remind me to call John", "Add task to pull the roof").
@@ -53,19 +82,19 @@ You must reply with ONLY a JSON object exactly adhering to this format:
 Do NOT wrap the JSON in markdown blocks. Return the raw JSON block directly.`;
 
         try {
-            const response = await fetch(this.apiUrl, {
+            const response = await this.safeFetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning', // Latest flagship model (multimodal)
+                    model: 'grok-4',
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: text }
-                    ],
-                    temperature: 0.1
+                    ]
+                    // Temperature and other params omitted for pure reasoning consistency
                 })
             });
 
@@ -79,10 +108,10 @@ Do NOT wrap the JSON in markdown blocks. Return the raw JSON block directly.`;
             let contentString = data.choices[0].message.content.trim();
             
             // Clean up Markdown if returned
-            if (contentString.startsWith('\`\`\`json')) {
-                contentString = contentString.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
-            } else if (contentString.startsWith('\`\`\`')) {
-                contentString = contentString.replace(/^\`\`\`\n/, '').replace(/\n\`\`\`$/, '');
+            if (contentString.startsWith('```json')) {
+                contentString = contentString.replace(/^```json\n/, '').replace(/\n```$/, '');
+            } else if (contentString.startsWith('```')) {
+                contentString = contentString.replace(/^```\n/, '').replace(/\n```$/, '');
             }
             
             return JSON.parse(contentString);
@@ -93,7 +122,57 @@ Do NOT wrap the JSON in markdown blocks. Return the raw JSON block directly.`;
         }
     },
 
-    async processXactimate(text) {
+    async callGemini(contents) {
+        const apiKey = this.getGeminiApiKey();
+        if (!apiKey) throw new Error("Google Gemini API Key required. Please add it in Settings.");
+
+        try {
+            const response = await fetch(`${this.geminiApiUrl}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error?.message || "Gemini API Error");
+            }
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text.trim();
+        } catch (error) {
+            console.error("Gemini Error:", error);
+            throw error;
+        }
+    },
+
+    async geminiAnalyzeImage(base64Array, prompt) {
+        const parts = [
+            { text: prompt },
+            ...base64Array.map(b64 => ({
+                inline_data: {
+                    mime_type: "image/jpeg",
+                    data: b64.includes(',') ? b64.split(',')[1] : b64
+                }
+            }))
+        ];
+        return this.callGemini([{ role: 'user', parts }]);
+    },
+
+    async geminiProcessVideo(videoBase64, prompt) {
+        const parts = [
+            { text: prompt },
+            {
+                inline_data: {
+                    mime_type: "video/mp4",
+                    data: videoBase64.includes(',') ? videoBase64.split(',')[1] : videoBase64
+                }
+            }
+        ];
+        return this.callGemini([{ role: 'user', parts }]);
+    },
+
+    async processXactimatePrompt(text) {
         if (!text.trim()) return null;
         
         const apiKey = this.getApiKey();
@@ -114,7 +193,7 @@ Output ONLY the bulleted list, no conversational filler.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
+                    model: 'grok-beta',
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: text }
@@ -137,65 +216,10 @@ Output ONLY the bulleted list, no conversational filler.`;
         }
     },
     
-    apiKey: null, // To be loaded from Cloud/Local Sync
-
     async analyzeImage(base64DataUrl, promptOverride = null) {
-        const apiKey = this.getApiKey();
-        if (!apiKey) throw new Error("API Key required.");
-
-        // Normalize to array for multi-vision support
+        const prompt = promptOverride || "You are an expert claims adjuster. Analyze these photos. List any visible damage (hail, wind, water, wear and tear) and its severity. Be concise and professional.";
         const base64Array = Array.isArray(base64DataUrl) ? base64DataUrl : [base64DataUrl];
-        
-        // Clean all base64 strings
-        const cleanedImages = base64Array.map(item => {
-            const b64 = item.includes(',') ? item.split(',')[1] : item;
-            if (!b64) throw new Error("Invalid image format");
-            return b64;
-        });
-
-        try {
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    // Use stable version
-                    model: 'grok-4.20-reasoning',
-                    messages: [
-                        { 
-                            role: 'user', 
-                            content: [
-                                {
-                                    type: "text",
-                                    text: "You are an expert claims adjuster. Analyze these photos. List any visible damage (hail, wind, water, wear and tear) and its severity. Be concise and professional."
-                                },
-                                // Map over cleanedImages
-                                ...cleanedImages.map(b64 => ({
-                                    type: "image_url",
-                                    image_url: {
-                                        url: `data:image/jpeg;base64,${b64}`
-                                    }
-                                }))
-                            ]
-                        }
-                    ],
-                    temperature: 0.1
-                })
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error("Grok Vision API Error: " + errText);
-            }
-
-            const data = await response.json();
-            return data.choices[0].message.content.trim();
-        } catch (error) {
-            console.error("Vision Error:", error);
-            throw error;
-        }
+        return this.geminiAnalyzeImage(base64Array, prompt);
     },
     
     async askPolicy(pdfText, question) {
@@ -220,7 +244,7 @@ Cite the relevant section if possible.`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
+                    model: 'grok-beta',
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt }
@@ -243,83 +267,12 @@ Cite the relevant section if possible.`;
     },
 
     async ocrPolicyPage(base64DataUrl) {
-        const apiKey = this.getApiKey();
-        if (!apiKey) throw new Error("API Key required");
-
-        const base64Image = base64DataUrl.split(',')[1];
-        
-        try {
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: [
-                        { 
-                            role: 'user', 
-                            content: [
-                                {
-                                    type: "text",
-                                    text: "You are a high-precision OCR machine. Extract every single word from this insurance policy page image. Maintain the structure as much as possible but prioritize accuracy of the text. Output ONLY the extracted text, no conversational filler."
-                                },
-                                {
-                                    type: "image_url",
-                                    image_url: {
-                                        url: base64DataUrl.startsWith('data:') ? base64DataUrl : `data:image/jpeg;base64,${base64Image}`
-                                    }
-                                }
-                            ]
-                        }
-                    ],
-                    temperature: 0
-                })
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error("Grok OCR Error: " + errText);
-            }
-            const data = await response.json();
-            return data.choices[0].message.content.trim();
-        } catch (error) {
-            console.error("OCR Error:", error);
-            throw error;
-        }
+        const prompt = "You are a high-precision OCR machine. Extract every single word from this insurance policy page image. Maintain the structure as much as possible but prioritize accuracy. Output ONLY the extracted text.";
+        return this.geminiAnalyzeImage([base64DataUrl], prompt);
     },
 
     async analyzeEstimate(base64DataUrl) {
-        const apiKey = this.getApiKey();
-        if (!apiKey) throw new Error("API Key required");
-
-        // Normalize to array for multi-page estimate support
-        const base64Array = Array.isArray(base64DataUrl) ? base64DataUrl : [base64DataUrl];
-        
-        // Clean all base64 strings
-        const cleanedImages = base64Array.map(item => {
-            const b64 = item.includes(',') ? item.split(',')[1] : item;
-            if (!b64) throw new Error("Invalid image format");
-            return b64;
-        });
-        
-        try {
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: [
-                        { 
-                            role: 'user', 
-                            content: [
-                                {
-                                    type: "text",
-                                    text: `You are an expert Xactimate estimator. Analyze this contractor's photo/capture of an estimate.
+        const prompt = `You are an expert Xactimate estimator. Analyze this capture of an estimate.
 Extract each line item and translate it into a valid or best-guess Xactimate category and code.
 
 Return your response as a raw JSON array of objects:
@@ -327,46 +280,25 @@ Return your response as a raw JSON array of objects:
   { "cat": "...", "code": "...", "desc": "...", "qty": "...", "unit": "..." }
 ]
 
-Do not include conversational filler or markdown blocks.`
-                                },
-                                // Map over all pages/photos
-                                ...cleanedImages.map(b64 => ({
-                                    type: "image_url",
-                                    image_url: {
-                                        url: `data:image/jpeg;base64,${b64}`
-                                    }
-                                }))
-                            ]
-                        }
-                    ],
-                    temperature: 0.1
-                })
-            });
+Do not include conversational filler or markdown blocks.`;
 
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`Grok Estimate Analysis Error (Status ${response.status}): ${errText}`);
-            }
-            const data = await response.json();
-            let content = data.choices[0].message.content.trim();
-            
-            // Cleanup JSON if needed
-            if (content.startsWith('```json')) content = content.replace(/^```json\n/, '').replace(/\n```$/, '');
-            else if (content.startsWith('```')) content = content.replace(/^```\n/, '').replace(/\n```$/, '');
-            
+        const base64Array = Array.isArray(base64DataUrl) ? base64DataUrl : [base64DataUrl];
+        const result = await this.geminiAnalyzeImage(base64Array, prompt);
+        
+        // Cleanup JSON if needed
+        let content = result.trim();
+        if (content.startsWith('```json')) content = content.replace(/^```json\n/, '').replace(/\n```$/, '');
+        else if (content.startsWith('```')) content = content.replace(/^```\n/, '').replace(/\n```$/, '');
+        
+        try {
             return JSON.parse(content);
-        } catch (error) {
-            console.error("Estimate Analysis Error:", error);
-            throw error;
+        } catch (e) {
+            console.error("Failed to parse Gemini estimate JSON:", content);
+            throw new Error("AI returned malformed data. Try again.");
         }
     },
 
     async identifyMaterial(base64DataUrl) {
-        const apiKey = this.getApiKey();
-        if (!apiKey) throw new Error("API Key required");
-
-        const base64Image = base64DataUrl.split(',')[1];
-        
         const prompt = `You are an expert exterior building material specialist and insurance adjuster.
 Analyze this photo of a building material (siding, soffit, or fascia).
 Identify the following details with high precision:
@@ -387,47 +319,12 @@ Return your response as a raw JSON object only:
     "xactimate_code": "..."
 }`;
 
-        try {
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: [
-                        { 
-                            role: 'user', 
-                            content: [
-                                { type: "text", text: prompt },
-                                {
-                                    type: "image_url",
-                                    image_url: { url: `data:image/jpeg;base64,${base64Image}` }
-                                }
-                            ]
-                        }
-                    ],
-                    temperature: 0.1
-                })
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error("Grok Material ID Error: " + errText);
-            }
-            const data = await response.json();
-            let content = data.choices[0].message.content.trim();
-            
-            // Cleanup JSON markdown if present
-            if (content.startsWith('```json')) content = content.replace(/^```json\n/, '').replace(/\n```$/, '');
-            else if (content.startsWith('```')) content = content.replace(/^```\n/, '').replace(/\n```$/, '');
-            
-            return JSON.parse(content);
-        } catch (error) {
-            console.error("Material ID Error:", error);
-            throw error;
-        }
+        const result = await this.geminiAnalyzeImage([base64DataUrl], prompt);
+        let content = result.trim();
+        if (content.startsWith('```json')) content = content.replace(/^```json\n/, '').replace(/\n```$/, '');
+        else if (content.startsWith('```')) content = content.replace(/^```\n/, '').replace(/\n```$/, '');
+        
+        return JSON.parse(content);
     },
 
     async checkDiscontinued(description) {
@@ -438,7 +335,7 @@ Return your response as a raw JSON object only:
 Check if the following building material is currently DISCONTINUED or AVAILABLE:
 "${description}"
 
-Search your internal knowledge for discontinuation notices from major manufacturers (e.g., Alcoa, Mastic, CertainTeed, James Hardie). 
+Search your internal knowledge for discontinuation notices from major manufacturers. 
 If it is discontinued, explain WHY and if there are known technical matches.
 If you are unsure, state that it may require an ITEL report for confirmation.
 
@@ -452,7 +349,7 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
+                    model: 'grok-beta',
                     messages: [
                         { role: 'user', content: prompt }
                     ],
@@ -488,25 +385,25 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
     Return ONLY JSON. Do not include markdown formatting block.`;
 
         try {
-            const response = await fetch(this.apiUrl, {
+            const response = await this.safeFetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
+                    model: 'grok-4',
                     messages: [
                         { role: 'user', content: prompt }
                     ],
-                    temperature: 0.1
+                    response_format: { type: "json_object" }
                 })
             });
 
             if (!response.ok) throw new Error("Grok Brain Dump Error");
             const data = await response.json();
             const result = data.choices[0].message.content.trim();
-            const cleaned = result ? result.replace(/```json|```/g, '').trim() : "{}";
+            const cleaned = result ? result.replace(/\\\\\\\\\json|\\\\\\\\\/g, '').trim() : "{}";
             return JSON.parse(cleaned);
         } catch (error) {
             console.error("Error parsing Brain Dump:", error);
@@ -520,14 +417,14 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
 
         let area = "this location";
         try {
-            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const geoRes = await fetch(\https://nominatim.openstreetmap.org/reverse?format=json&lat=\&lon=\\);
             const geoData = await geoRes.json();
             const address = geoData.address;
             area = address.city || address.town || address.county || address.state || "this location";
         } catch (e) { console.warn("Reverse geocoding failed", e); }
 
-        const prompt = `You are a local architectural and historical tour guide for ${area}. 
-        Identify 10-15 highly notable Points of Interest within a 50-mile radius of latitude ${lat}, longitude ${lng}.
+        const prompt = \You are a local architectural and historical tour guide for \. 
+        Identify 10-15 highly notable Points of Interest within a 50-mile radius of latitude \, longitude \.
         Categories to focus on: American History, Architectural Sites, Famous/Historic Diners, and Major Landmarks.
         Provide approximate, but highly accurate, latitude and longitude coordinates for each location so they can be plotted on a map.
         
@@ -536,17 +433,17 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
           "pois": [
             { "name": "Name of Place", "category": "Category", "description": "1-2 sentence compelling hook", "lat": 0.0, "lng": 0.0 }
           ]
-        }`;
+        }\;
 
         try {
             const response = await fetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Authorization': \Bearer \\
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
+                    model: 'grok-beta',
                     messages: [ { role: 'user', content: prompt } ],
                     temperature: 0.2
                 })
@@ -555,7 +452,7 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
             if (!response.ok) throw new Error("Grok POI Error");
             const data = await response.json();
             const result = data.choices[0].message.content.trim();
-            const cleaned = result ? result.replace(/```json|```/g, '').trim() : "{}";
+            const cleaned = result ? result.replace(/\\\\\\\\\json|\\\\\\\\\/g, '').trim() : "{}";
             return JSON.parse(cleaned).pois || [];
         } catch (error) {
             console.error("Error finding POIs:", error);
@@ -564,77 +461,16 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
     },
 
     async analyzeALEPhoto(base64DataUrl) {
-        const apiKey = this.getApiKey();
-        if (!apiKey) throw new Error("API Key required");
-
-        const base64Image = base64DataUrl.split(',')[1];
-        if (!base64Image) throw new Error("Invalid image format");
-
-        const prompt = `You are a specialist in State Farm ALE (Additional Living Expenses) documentation. 
+        const prompt = \You are a specialist in State Farm ALE (Additional Living Expenses) documentation. 
         Analyze this photo of a receipt, document, or computer screen:
         1. **Identify Attachment Type**: (e.g., Meals & Expenses, Lodging, Mileage).
         2. **Extract Figures**: Tally up all dollar amounts and quantities listed.
         3. **Format**: return a structured Markdown summary including:
            - Category Name
            - Total Amount extracted
-           - Itemized breakdown of individual entries`;
+           - Itemized breakdown of individual entries\;
 
-        try {
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: [
-                        { 
-                            role: 'user', 
-                            content: [
-                                { type: "text", text: prompt },
-                                { type: "image_url", image_url: { url: base64DataUrl.startsWith('data:') ? base64DataUrl : `data:image/jpeg;base64,${base64Image}` } }
-                            ]
-                        }
-                    ],
-                    temperature: 0.1
-                })
-            });
-
-            if (!response.ok) throw new Error("Grok ALE Analysis Error");
-            const data = await response.json();
-            return data.choices[0].message.content.trim();
-        } catch (error) {
-            console.error("ALE Analysis Error:", error);
-            throw error;
-        }
-    },
-
-    async processXactimate(prompt) {
-        const apiKey = this.getApiKey();
-        if (!apiKey) throw new Error("API Key required");
-
-        try {
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: [ { role: 'user', content: prompt } ],
-                    temperature: 0.1
-                })
-            });
-
-            if (!response.ok) throw new Error("Grok Xactimate Error");
-            const data = await response.json();
-            return data.choices[0].message.content.trim();
-        } catch (error) {
-            console.error("Xactimate Extraction Error:", error);
-            throw error;
-        }
+        return this.geminiAnalyzeImage([base64DataUrl], prompt);
     },
 
     async generateBatchVoicemailReport(voicemailsContext) {
@@ -642,22 +478,22 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
         if (!apiKey) throw new Error("API Key required");
 
         try {
-            const prompt = `You are a claims adjuster assistant.
+            const prompt = \You are a claims adjuster assistant.
             Review the following list of transcribed voicemails.
             Generate an urgent "Markdown Priority Callback Table" and summarize the most critical action items.
             Format the response in cleanly formatted Markdown.
             
             Voicemails:
-            ${voicemailsContext}`;
+            \\;
 
             const response = await fetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Authorization': \Bearer \\
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
+                    model: 'grok-beta',
                     messages: [ { role: 'user', content: prompt } ],
                     temperature: 0.2
                 })
@@ -676,30 +512,29 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
         const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
-        const prompt = `You are a Master Xactimate Line Item Expert. 
-        The user is searching for: "${query}".
+        const prompt = \You are a Master Xactimate Line Item Expert. 
+        The user is searching for: "\".
         
         1. Identify the primary line item.
-        2. Identify COMPLEMENTARY items that typically go with this trade (e.g., if it's roofing, suggest the shingles + underlayment + starter + ridge cap).
+        2. Identify COMPLEMENTARY items that typically go with this trade.
         3. Return a list of the top 8 most relevant Xactimate codes.
-        Include Code, Description, and Category.
         
         Return STRICTLY in JSON format:
         {
           "items": [
             { "code": "RFG300", "description": "Comp. shingles - w/ felt - 3-tab - 20-25 yr", "category": "Roofing" }
           ]
-        }`;
+        }\;
 
         try {
             const response = await fetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Authorization': \Bearer \\
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
+                    model: 'grok-beta',
                     messages: [ { role: 'user', content: prompt } ],
                     temperature: 0.1
                 })
@@ -708,7 +543,7 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
             if (!response.ok) throw new Error("Grok Dictionary Error");
             const data = await response.json();
             const result = data.choices[0].message.content.trim();
-            const cleaned = result ? result.replace(/```json|```/g, '').trim() : "{}";
+            const cleaned = result ? result.replace(/\\\\\\\\\json|\\\\\\\\\/g, '').trim() : "{}";
             return JSON.parse(cleaned).items || [];
         } catch (error) {
             console.error("Dictionary Search Error:", error);
@@ -720,40 +555,27 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
         const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
-        const prompt = `You are an expert in insurance claim logistics and jurisdictional mapping. 
-For Zip Code: ${zip}, identify:
-1. The Authority Having Jurisdiction (AHJ) - e.g. City of Atlanta Building Department.
-2. The current Material Sales Tax rate for that location.
-3. The Governing Building Codes currently adopted (e.g. 2021 IRC, 2020 NEC).
-4. A direct URL to the Building Department or Permit Search website.
-
-Return ONLY as a raw JSON object:
-{
-  "ahj": "...",
-  "sales_tax": "X.X%",
-  "governing_codes": "...",
-  "dept_url": "..."
-}`;
+        const prompt = \You are an expert in insurance claim logistics and jurisdictional mapping. 
+For Zip Code: \, identify: AHJ, Sales Tax, Building Codes, and URL.
+Return ONLY as a raw JSON object.\;
 
         try {
             const response = await fetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Authorization': \Bearer \\
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: [
-                        { role: 'user', content: prompt }
-                    ],
+                    model: 'grok-beta',
+                    messages: [ { role: 'user', content: prompt } ],
                     temperature: 0.1
                 })
             });
             const data = await response.json();
             let content = data.choices[0].message.content.trim();
-            if (content.startsWith('```json')) content = content.replace(/^```json\n/, '').replace(/\n```$/, '');
-            else if (content.startsWith('```')) content = content.replace(/^```\n/, '').replace(/\n```$/, '');
+            if (content.startsWith('\\\\\\\\\json')) content = content.replace(/^\\\\\\\\\json\n/, '').replace(/\n\\\\\\\\\$/, '');
+            else if (content.startsWith('\\\\\\\\\')) content = content.replace(/^\\\\\\\\\\n/, '').replace(/\n\\\\\\\\\$/, '');
             return JSON.parse(content);
         } catch (e) {
             console.error(e);
@@ -765,28 +587,18 @@ Return ONLY as a raw JSON object:
         const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("API Key required");
 
-        const prompt = `You are an elite Building Code Consultant specializing in IRC (International Residential Code) and IBC (International Building Code) as it pertains to insurance restoration.
-Location Zip: ${zip}
-
-Answer this building code question accurately. 
-- Always cite the specific Code Section (e.g. R905.2.8.5).
-- If the zip code implies a specific state (e.g. Florida), reference state-specific amendments if applicable.
-- Focus on "Line item justification" arguments (i.e. why this must be paid).
-
-Question: ${query}`;
+        const prompt = \You are an elite Building Code Consultant. Question: \ (Zip: \)\;
 
         try {
             const response = await fetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Authorization': \Bearer \\
                 },
                 body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: [
-                        { role: 'user', content: prompt }
-                    ]
+                    model: 'grok-beta',
+                    messages: [ { role: 'user', content: prompt } ]
                 })
             });
             const data = await response.json();
