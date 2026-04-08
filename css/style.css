@@ -738,3 +738,100 @@ body {
     from { transform: translateY(0); opacity: 1; }
     to { transform: translateY(-10px); opacity: 0; }
 }
+
+/* Water Loss Agent Styling */
+.wl-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100%;
+}
+
+.wl-hub {
+    background: rgba(30, 30, 30, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.wl-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.wl-action-btn {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wl-action-btn:active {
+    transform: scale(0.95);
+    background: var(--bg-surface-light);
+}
+
+.wl-action-btn span.material-symbols-outlined {
+    font-size: 32px;
+    color: var(--primary-color);
+}
+
+.wl-input-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#wl-live-transcript {
+    width: 100%;
+    height: 120px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+    color: var(--text-primary);
+    resize: none;
+    font-size: 1rem;
+}
+
+#wl-live-transcript:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.wl-output-container {
+    background: var(--bg-surface);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    margin-top: 20px;
+}
+
+.wl-output-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+}
+
+.pulse {
+    animation: pulse-icon 1.5s infinite;
+}
+
+@keyframes pulse-icon {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}

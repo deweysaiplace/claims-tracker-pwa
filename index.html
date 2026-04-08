@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Claims Tracker PWA</title>
+    <title>The Claims Experience</title>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -37,7 +37,7 @@
             <div class="auth-container">
                 <div class="auth-card" style="text-align: center; max-width: 320px; width: 100%; padding: 20px; background: var(--bg-surface); border-radius: 12px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color);">
                     <div style="font-size: 3rem; margin-bottom: 20px;">🛡️</div>
-                    <h2 style="margin-bottom: 5px;">Claims Tracker</h2>
+                    <h2 style="margin-bottom: 5px;">The Claims Experience</h2>
                     <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.9rem;">App Version v1.5.2</p>
                     
                     <form id="login-form">
@@ -87,7 +87,7 @@
                 <!-- Header -->
                 <header class="app-header">
                     <div class="header-title" style="display: flex; align-items: baseline; gap: 8px;">
-                        <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">Claims Tracker</span>
+                        <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">The Claims Experience</span>
                         <span id="current-view-title" style="font-size: 0.8em; opacity: 0.6;">v1.8.0</span>
                     </div>
                     <div class="header-actions">
@@ -102,6 +102,13 @@
                 <!-- Home View -->
                 <section id="view-home" class="view active-view">
                     <div class="quick-actions">
+                        <button class="action-card" onclick="app.navigate('water-loss')" style="grid-column: span 2; background: linear-gradient(135deg, rgba(0,122,255,0.1), rgba(0,200,255,0.05)); border: 1px solid rgba(0,122,255,0.3);">
+                            <div class="action-icon water-icon" style="background: linear-gradient(135deg, #00C6FF, #0072FF); color: white; margin: 0 auto 10px auto;">
+                                <span class="material-symbols-outlined">water_drop</span>
+                            </div>
+                            <h3 style="color: #00A6FF; font-size: 1.1rem; margin-bottom: 4px;">Water Loss Agent</h3>
+                            <p style="font-size: 0.85rem; opacity: 0.8;">Dictate • Photos • Estimate</p>
+                        </button>
                         <button class="action-card" onclick="app.navigate('voice-note')">
                             <div class="action-icon record-icon">
                                 <span class="material-symbols-outlined">mic</span>
@@ -140,20 +147,36 @@
                             <h3>Policy Chat</h3>
                             <p>PDF AI Analyst</p>
                         </button>
-                        <button class="action-card" onclick="app.navigate('scan-estimate')" style="grid-column: span 1;">
-                            <div class="action-icon estimate-icon" style="background: #e91e63; color: white;">
-                                <span class="material-symbols-outlined">receipt_long</span>
-                            </div>
-                            <h3>Scan Estimate</h3>
-                            <p>Photo to Codes</p>
-                        </button>
-                        
                         <button class="action-card" onclick="app.navigate('material-id')" style="grid-column: span 1;">
                             <div class="action-icon material-icon" style="background: #607d8b; color: white;">
                                 <span class="material-symbols-outlined">category</span>
                             </div>
                             <h3>Material ID</h3>
                             <p>Siding & Soffit</p>
+                        </button>
+                        
+                        <button class="action-card" onclick="app.navigate('ctre-translator')" style="grid-column: span 1;">
+                            <div class="action-icon estimate-icon" style="background: linear-gradient(135deg, #e91e63, #ff4081); color: white;">
+                                <span class="material-symbols-outlined">compare_arrows</span>
+                            </div>
+                            <h3>Estimate Translator</h3>
+                            <p>CTRE vs SFE Gap</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('copilot-chat')" style="grid-column: span 1;">
+                            <div class="action-icon" style="background: linear-gradient(135deg, #673ab7, #9c27b0); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto;">
+                                <span class="material-symbols-outlined">forum</span>
+                            </div>
+                            <h3>Copilot Chat</h3>
+                            <p>State Farm Guru</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('playbooks')" style="grid-column: span 1;">
+                            <div class="action-icon" style="background: linear-gradient(135deg, #009688, #4caf50); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto;">
+                                <span class="material-symbols-outlined">library_books</span>
+                            </div>
+                            <h3>Playbook Hub</h3>
+                            <p>Procedures & Guides</p>
                         </button>
 
                         <button class="action-card" onclick="app.navigate('drafts')" style="grid-column: span 1;">
@@ -492,35 +515,116 @@
                 </section>
 
                 <!-- Scan Estimate View -->
-                <section id="view-scan-estimate" class="view">
-                    <div class="voice-container view-content">
-                        <h2>Scan Estimate</h2>
-                        <p class="subtitle">Convert contractor photos to Xactimate codes</p>
+                <!-- Copilot Chat View -->
+                <section id="view-copilot-chat" class="view desk-view">
+                    <div class="view-content" style="display:flex; flex-direction:column; height: 100%;">
+                        <div style="background: linear-gradient(135deg, rgba(103, 58, 183, 0.2), rgba(156, 39, 176, 0.1)); padding: 20px; border-radius: 12px; border: 1px solid rgba(156, 39, 176, 0.3); margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: #d05ce3; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-outlined">forum</span> Copilot Chat
+                            </h2>
+                            <p class="subtitle" style="margin-top: 5px; opacity: 0.8;">Ask the AI Brain any State Farm handling questions, rules, or procedural guidelines.</p>
+                        </div>
                         
-                        <div style="margin-top: 20px; text-align: center;">
-                            <input type="file" id="estimate-file-input" accept="image/*" style="display: none;" onchange="app.handleEstimateImageSelect(event)">
-                            <button class="btn btn-primary btn-large" onclick="document.getElementById('estimate-file-input').click()" style="display:flex; align-items:center; justify-content:center; gap:8px; margin: 0 auto;">
-                                <span class="material-symbols-outlined">photo_camera</span> Take/Select Photo
+                        <div id="copilot-chat-history" style="flex: 1; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px;">
+                            <div style="align-self: flex-start; background: var(--bg-surface-light); padding: 10px 15px; border-radius: 12px; border-bottom-left-radius: 2px; max-width: 85%;">
+                                <strong>SF Copilot:</strong> Ask me anything regarding property procedures!
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="copilot-chat-input" placeholder="e.g., What are the rules on matching siding?" style="flex: 1; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary);">
+                            <button class="btn btn-primary" onclick="app.sendCopilotMessage()" style="border-radius: 12px; padding: 0 20px;">
+                                <span class="material-symbols-outlined">send</span>
                             </button>
-                            
-                            <div id="estimate-preview-container" class="hidden" style="margin-top: 20px;">
-                                <img id="estimate-preview-img" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; border: 1px solid var(--border-color);">
-                                <button id="btn-analyze-estimate" class="btn btn-success btn-block" style="margin-top: 15px;" onclick="app.analyzeEstimatePhoto()">
-                                    Analyze Estimate
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CTRE Translator View -->
+                <section id="view-ctre-translator" class="view desk-view">
+                    <div class="view-content voice-container">
+                        <h2>Estimate Translator</h2>
+                        <p class="subtitle">Convert or Compare Contractor Estimates (CTRE) to Xactimate (SFE)</p>
+                        
+                        <div style="display:flex; justify-content:center; gap: 15px; margin-top: 15px; background:var(--bg-surface-light); padding:10px; border-radius:8px; width: 100%;">
+                            <label style="display:flex; align-items:center; gap:5px; font-size:0.9rem; cursor:pointer; font-weight:bold;">
+                                <input type="radio" name="ctre-mode" value="translate" checked onchange="app.toggleCtreMode()"> 
+                                <span class="material-symbols-outlined" style="font-size:18px;">receipt_long</span> Translate
+                            </label>
+                            <label style="display:flex; align-items:center; gap:5px; font-size:0.9rem; cursor:pointer; font-weight:bold;">
+                                <input type="radio" name="ctre-mode" value="compare" onchange="app.toggleCtreMode()"> 
+                                <span class="material-symbols-outlined" style="font-size:18px;">compare_arrows</span> Compare & Gap
+                            </label>
+                        </div>
+
+                        <div class="wl-hub" style="margin-top: 20px; width: 100%;">
+                            <div class="wl-actions-grid" id="ctre-inputs-grid">
+                                <button class="wl-action-btn" onclick="document.getElementById('ctre-file-input').click()">
+                                    <span class="material-symbols-outlined">document_scanner</span>
+                                    <span style="font-weight:600; font-size:0.9rem;">Upload CTRE</span>
+                                    <input type="file" id="ctre-file-input" accept="image/*,application/pdf" style="display: none;" onchange="app.handleCtreUpload(event, 'ctre')">
+                                </button>
+                                
+                                <button class="wl-action-btn hidden" id="sfe-upload-btn" onclick="document.getElementById('sfe-file-input').click()">
+                                    <span class="material-symbols-outlined">add_photo_alternate</span>
+                                    <span style="font-weight:600; font-size:0.9rem;">Upload SFE</span>
+                                    <input type="file" id="sfe-file-input" accept="image/*,application/pdf" style="display: none;" onchange="app.handleCtreUpload(event, 'sfe')">
                                 </button>
                             </div>
                             
-                            <div id="estimate-output-container" class="hidden" style="margin-top: 25px; text-align: left;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <h3 style="margin: 0; font-size: 1rem;">Generated Xactimate Codes</h3>
-                                    <div style="display:flex; gap:5px;">
-                                        <button class="btn btn-secondary btn-small" onclick="app.copyEstimateToClipboard()" style="padding: 4px 8px; font-size: 0.75rem;">Copy</button>
-                                        <button class="btn btn-success btn-small" onclick="app.openSaveDraftModal('estimate')" style="padding: 4px 8px; font-size: 0.75rem;">Save Draft</button>
-                                    </div>
+                            <div id="ctre-preview-container" class="hidden" style="margin-top: 15px; text-align:left;">
+                                <p id="ctre-status-text" style="font-size: 0.85rem; color: var(--success-color);"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> CTRE Loaded</p>
+                                <p id="sfe-status-text" class="hidden" style="font-size: 0.85rem; color: var(--success-color); margin-top: 5px;"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> SFE Loaded</p>
+                                
+                                <button id="btn-process-ctre" class="btn btn-primary btn-block btn-large pulse hidden" style="margin-top: 15px;" onclick="app.processCtre()">
+                                    Generate Xactimate Codes
+                                </button>
+                            </div>
+                            
+                            <div id="ctre-output-container" class="hidden wl-output-container" style="text-align: left;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary-color);">AI Output</h3>
+                                    <button class="btn btn-secondary btn-small" onclick="window.navigator.clipboard.writeText(document.getElementById('ctre-transcript').value); alert('Copied!');">Copy</button>
                                 </div>
-                                <div class="transcript-box">
-                                    <textarea id="estimate-transcript" readonly style="height: 250px; font-family: monospace; font-size: 0.85rem; line-height: 1.4;"></textarea>
+                                <div class="transcript-box large" style="margin:0;">
+                                    <textarea id="ctre-transcript" readonly style="height: 350px;"></textarea>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Playbook Hub View -->
+                <section id="view-playbooks" class="view desk-view">
+                    <div class="view-content" style="display:flex; flex-direction:column; height: 100%;">
+                        <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(0, 150, 136, 0.1)); padding: 20px; border-radius: 12px; border: 1px solid rgba(76, 175, 80, 0.3); margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: #4caf50; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-outlined">library_books</span> Procedural Playbooks
+                            </h2>
+                            <p class="subtitle" style="margin-top: 5px; opacity: 0.8;">Review step-by-step handling guidelines for specific loss types.</p>
+                        </div>
+                        
+                        <!-- Hub Selection -->
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px;">
+                            <button class="btn btn-secondary" onclick="app.loadPlaybook('water')" style="text-align: left; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><span class="material-symbols-outlined" style="vertical-align: middle; color: #00A6FF; margin-right: 8px;">water_drop</span> Water Loss Guide</span>
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="app.loadPlaybook('wind')" style="text-align: left; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><span class="material-symbols-outlined" style="vertical-align: middle; color: #9c27b0; margin-right: 8px;">air</span> Wind / Hail Guide</span>
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="app.loadPlaybook('fire')" style="text-align: left; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><span class="material-symbols-outlined" style="vertical-align: middle; color: #FF3B30; margin-right: 8px;">local_fire_department</span> Fire / Smoke Guide</span>
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                        </div>
+
+                        <!-- Hub Content Area -->
+                        <div id="playbook-content-area" class="hidden" style="flex: 1; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px;">
+                            <h3 id="playbook-title" style="margin-top: 0; margin-bottom: 15px; color: var(--primary-color);"></h3>
+                            <div id="playbook-checklist" style="display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem; line-height: 1.5;">
+                                <!-- Dynamic check items load here -->
                             </div>
                         </div>
                     </div>
@@ -735,6 +839,94 @@
                         </ul>
                     </div>
                 </section>
+                <!-- Water Loss View -->
+                <section id="view-water-loss" class="view">
+                    <div class="view-content voice-container">
+                        <h2>Water Loss Agent</h2>
+                        <p class="subtitle">Convert observations into structured Draft Scopes</p>
+                        
+                        <!-- Top bar: Claim Selection -->
+                        <div style="margin-top: 15px; background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div class="input-group" style="margin: 0;">
+                                <label>Associate with Active Claim</label>
+                                <select id="water-loss-claim-id">
+                                    <option value="">-- Start New Session --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Optional Quick Procedural Playbook -->
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-secondary btn-block" onclick="document.getElementById('wl-quick-playbook').classList.toggle('hidden')" style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-surface); border: 1px dashed var(--border-color); color:var(--text-secondary); padding: 10px 15px;">
+                                <span><span class="material-symbols-outlined" style="vertical-align: middle; font-size:18px; margin-right:5px; color:#4caf50;">library_books</span> Optional: Show Water Loss Playbook</span>
+                                <span class="material-symbols-outlined">expand_more</span>
+                            </button>
+                            <div id="wl-quick-playbook" class="hidden" style="background:var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); border-top: none; margin-top: -5px; font-size: 0.85rem; line-height: 1.6;">
+                                <h4 style="margin-top:0; margin-bottom:8px; color:var(--primary-color);">Pre-Flight Checklist (Not Mandatory)</h4>
+                                <div><input type="checkbox"> Source identified and stopped?</div>
+                                <div><input type="checkbox"> Category (1, 2, or 3) determined?</div>
+                                <div><input type="checkbox"> Age of home cross-referenced for Asbestos / Lead?</div>
+                                <div><input type="checkbox"> Flooring ITEL sample bagged?</div>
+                                <div><input type="checkbox"> Baseboard removed / tested behind?</div>
+                                <div><input type="checkbox"> Number of fans / dehumidifiers logged?</div>
+                            </div>
+                        </div>
+
+                        <!-- Input Hub -->
+                        <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                            <input type="file" id="wl-photo-input" accept="image/*" multiple style="display: none;" onchange="waterLossAgent.handlePhotos(event)">
+                            <button class="btn btn-primary" onclick="document.getElementById('wl-photo-input').click()" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 15px 5px; height: 100%;">
+                                <span class="material-symbols-outlined" style="font-size: 28px; margin-bottom: 5px;">add_a_photo</span>
+                                <span style="font-size: 0.75rem;">Photos</span>
+                            </button>
+                            
+                            <button class="btn btn-secondary" onclick="waterLossAgent.toggleDictation()" id="btn-wl-dictate" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 15px 5px; height: 100%; border: 1px solid var(--primary-color);">
+                                <span class="material-symbols-outlined" id="wl-dictate-icon" style="font-size: 28px; margin-bottom: 5px; color: var(--primary-color);">mic</span>
+                                <span style="font-size: 0.75rem;">Dictate</span>
+                            </button>
+
+                            <button class="btn btn-success" onclick="waterLossAgent.openTextInput()" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 15px 5px; height: 100%; background: #607d8b;">
+                                <span class="material-symbols-outlined" style="font-size: 28px; margin-bottom: 5px;">keyboard</span>
+                                <span style="font-size: 0.75rem;">Type</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Interactive Input / Processing State -->
+                        <div id="wl-active-input-area" class="hidden" style="margin-top: 15px;">
+                            <div class="transcript-box large" style="margin-bottom: 10px;">
+                                <textarea id="wl-live-transcript" placeholder="Transcribing or Type observations here..."></textarea>
+                            </div>
+                            <button class="btn btn-primary btn-block" onclick="waterLossAgent.processInput()" id="btn-wl-process">
+                                <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 5px;">psychology</span> Extract to Scope
+                            </button>
+                        </div>
+
+                        <!-- Processing Indicator -->
+                        <div id="wl-loading" class="hidden" style="margin-top: 20px; text-align: center; color: var(--primary-color);">
+                            <span class="material-symbols-outlined" style="font-size: 32px; animation: spin 2s linear infinite;">water_drop</span>
+                            <p style="margin-top: 10px; font-weight: bold;" id="wl-loading-text">Water Loss AI analyzing...</p>
+                        </div>
+
+                        <!-- Draft Scope Display -->
+                        <div id="wl-draft-output-container" class="hidden" style="margin-top: 25px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h3 style="margin: 0; color: #00C6FF; display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-symbols-outlined">receipt_long</span> Draft Scope
+                                </h3>
+                                <div style="display:flex; gap: 8px;">
+                                    <button class="btn btn-secondary btn-small" onclick="waterLossAgent.copyScope()">Copy</button>
+                                    <button class="btn btn-success btn-small" onclick="waterLossAgent.saveAsDraft()">Save Draft</button>
+                                </div>
+                            </div>
+                            <div class="transcript-box" style="padding: 0; border: none; background: transparent;">
+                                <div id="wl-rendered-scope" style="background: var(--bg-surface-light); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.85rem; line-height: 1.5; height: 350px; overflow-y: auto; color: var(--text-primary); text-align: left;">
+                                    <!-- Markdown scope rendered here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
             </div><!-- End Main Content -->
         </div><!-- End App Layout -->
 
@@ -935,6 +1127,7 @@
     <script src="js/auth.js?v=20"></script>
     <script src="js/voice.js?v=20"></script>
     <script src="js/ai-brain.js?v=20"></script>
+    <script src="js/water-loss-agent.js?v=1"></script>
     <script src="js/app.js?v=20"></script>
     
     <!-- Register Service Worker -->

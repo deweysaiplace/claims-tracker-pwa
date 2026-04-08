@@ -142,9 +142,12 @@ const app = {
             'dictate-summary': 'Summary',
             'settings': 'Settings',
             'vision': 'AI Vision',
-            'policy-chat': 'Policy Chat',
             'weather': 'Weather Check',
-            'dictionary': 'Dictionary'
+            'dictionary': 'Dictionary',
+            'water-loss': 'Water Loss Agent',
+            'ctre-translator': 'Estimate Translator',
+            'copilot-chat': 'SF Copilot Chat',
+            'playbooks': 'Playbook Hub'
         };
         const titleEl = document.getElementById('current-view-title');
         if(titleEl && titles[viewId]) {
@@ -408,7 +411,9 @@ const app = {
         try {
             const claims = await db.getAllClaims(auth.currentUser.id);
             this.renderClaims(claims);
-            this.populateClaimDropdown(claims);
+            this.populateClaimDropdown(claims, 'task-claim-id');
+            this.populateClaimDropdown(claims, 'draft-claim-id');
+            this.populateClaimDropdown(claims, 'water-loss-claim-id');
 
             const activeClaims = claims.filter(c => c.status !== 'Closed');
             this.renderActiveClaims(activeClaims);
@@ -480,8 +485,8 @@ const app = {
         });
     },
 
-    populateClaimDropdown(claims) {
-        const select = document.getElementById('task-claim-id');
+    populateClaimDropdown(claims, targetId = 'task-claim-id') {
+        const select = document.getElementById(targetId);
         if (!select) return;
         
         // Keep the first default option
@@ -1832,6 +1837,272 @@ const app = {
         const codes = el.dataset.codes;
         navigator.clipboard.writeText(codes).then(() => {
             this.showToast("Codes copied to clipboard!");
+        });
+    },
+
+    // --- CTRE Translator UI Logic ---
+    toggleCtreMode() {
+        const mode = document.querySelector('input[name="ctre-mode"]:checked').value;
+        const sfeBtn = document.getElementById('sfe-upload-btn');
+        if (mode === 'compare') {
+            sfeBtn.classList.remove('hidden');
+        } else {
+            sfeBtn.classList.add('hidden');
+        }
+        this.ctreData = { ctre: null, sfe: null };
+        document.getElementById('ctre-preview-container').classList.add('hidden');
+        document.getElementById('sfe-status-text').classList.add('hidden');
+        document.getElementById('ctre-output-container').classList.add('hidden');
+    },
+
+    ctreData: { ctre: null, sfe: null },
+
+    async handleCtreUpload(event, type) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const previewContainer = document.getElementById('ctre-preview-container');
+        const processBtn = document.getElementById('btn-process-ctre');
+        
+        previewContainer.classList.remove('hidden');
+        processBtn.classList.add('hidden');
+
+        try {
+            if (file.type === 'application/pdf') {
+                if(typeof pdfjsLib === 'undefined') throw new Error("PDF.js not loaded.");
+                const fileReader = new FileReader();
+                fileReader.onload = async function() {
+                    const typedarray = new Uint8Array(this.result);
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    let fullText = "";
+                    for(let i = 1; i <= pdf.numPages; i++){
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        fullText += textContent.items.map(s => s.str).join(' ') + "\n";
+                    }
+                    app.ctreData[type] = { type: 'text', content: fullText };
+                    app.checkCtreReady(type, processBtn);
+                };
+                fileReader.readAsArrayBuffer(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    this.ctreData[type] = { type: 'image', content: reader.result };
+                    this.checkCtreReady(type, processBtn);
+                };
+                reader.readAsDataURL(file);
+            }
+        } catch (e) {
+            console.error("Upload error", e);
+            alert("Error loading file. Please try again.");
+        }
+    },
+
+    checkCtreReady(type, processBtn) {
+        if (type === 'sfe') {
+            document.getElementById('sfe-status-text').classList.remove('hidden');
+        }
+        const mode = document.querySelector('input[name="ctre-mode"]:checked').value;
+        if (mode === 'translate' && this.ctreData.ctre) {
+            processBtn.classList.remove('hidden');
+        } else if (mode === 'compare' && this.ctreData.ctre && this.ctreData.sfe) {
+            processBtn.classList.remove('hidden');
+        }
+    },
+
+    async processCtre() {
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) return alert("Please configure Grok API Key in Settings.");
+
+        const mode = document.querySelector('input[name="ctre-mode"]:checked').value;
+        const processBtn = document.getElementById('btn-process-ctre');
+        const outputContainer = document.getElementById('ctre-output-container');
+        const transcriptArea = document.getElementById('ctre-transcript');
+
+        // Verify Data
+        if (mode === 'translate' && !this.ctreData.ctre) return alert("Upload CTRE first.");
+        if (mode === 'compare' && (!this.ctreData.ctre || !this.ctreData.sfe)) return alert("Upload both CTRE and SFE.");
+
+        processBtn.disabled = true;
+        processBtn.textContent = "Processing...";
+        outputContainer.classList.add('hidden');
+
+        try {
+            let prompt = "";
+            let contentBlock = [];
+
+            if (mode === 'translate') {
+                prompt = "You are an expert Xactimate estimator. Analyze this contractor's estimate (CTRE). Extract each line item and translate it into a valid or best-guess Xactimate category and code. Format your response as a clean, bulleted list: - [CAT] [CODE] [DESCRIPTION]. Provide only the code list.";
+            } else {
+                prompt = "You are an expert claims adjuster. You are given a Contractor Estimate (CTRE) and a State Farm Estimate (SFE). Compare them. Output EXACTLY what Xactimate codes are missing from the SFE, and any discrepancies in quantities. Format clearly.";
+            }
+
+            contentBlock.push({ type: "text", text: prompt });
+
+            // Add CTRE
+            if (this.ctreData.ctre.type === 'text') {
+                contentBlock.push({ type: "text", text: "CTRE DATA:\\n" + this.ctreData.ctre.content });
+            } else {
+                const b64 = this.ctreData.ctre.content.split(',')[1] || this.ctreData.ctre.content;
+                contentBlock.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } });
+            }
+
+            // Add SFE
+            if (mode === 'compare' && this.ctreData.sfe) {
+                if (this.ctreData.sfe.type === 'text') {
+                    contentBlock.push({ type: "text", text: "SFE DATA:\\n" + this.ctreData.sfe.content });
+                } else {
+                    const b64s = this.ctreData.sfe.content.split(',')[1] || this.ctreData.sfe.content;
+                    contentBlock.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64s}` } });
+                }
+            }
+
+            const response = await fetch('https://api.x.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                    model: 'grok-4.20',
+                    messages: [{ role: 'user', content: contentBlock }],
+                    temperature: 0.1
+                })
+            });
+
+            if(!response.ok) throw new Error("Grok translation failed.");
+            
+            const data = await response.json();
+            transcriptArea.value = data.choices[0].message.content.trim();
+            outputContainer.classList.remove('hidden');
+
+            this.showToast("Analysis Complete");
+        } catch (e) {
+            console.error(e);
+            alert("Error processing estimate. Please check console.");
+        } finally {
+            processBtn.disabled = false;
+            processBtn.textContent = "Generate Xactimate Codes";
+        }
+    },
+
+    // --- Copilot Chat Logic ---
+    copilotHistory: [
+        { role: 'system', content: 'You are an elite State Farm property claims adjuster and policy expert. Always answer questions accurately based on State Farm standard operating procedures, policies, and property adjusting best practices. Be concise, authoritative, and helpful.' }
+    ],
+
+    async sendCopilotMessage() {
+        const inputEl = document.getElementById('copilot-chat-input');
+        const text = inputEl.value.trim();
+        if(!text) return;
+
+        const apiKey = localStorage.getItem('GROK_API_KEY');
+        if (!apiKey) return alert("Please configure Grok API Key in Settings.");
+
+        inputEl.value = '';
+        this.appendCopilotMessage('User', text, 'flex-end', 'var(--primary-color)', 'white');
+        this.copilotHistory.push({ role: 'user', content: text });
+
+        try {
+            const response = await fetch('https://api.x.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                    model: 'grok-4.20',
+                    messages: this.copilotHistory,
+                    temperature: 0.2
+                })
+            });
+
+            if(!response.ok) throw new Error("API Error");
+            const data = await response.json();
+            const aiText = data.choices[0].message.content.trim();
+            
+            this.copilotHistory.push({ role: 'assistant', content: aiText });
+            this.appendCopilotMessage('SF Copilot', aiText, 'flex-start', 'var(--bg-surface-light)', 'var(--text-primary)');
+
+        } catch (e) {
+            console.error(e);
+            this.appendCopilotMessage('System', 'Failed to connect to SF Copilot.', 'flex-start', 'var(--danger-color)', 'white');
+        }
+    },
+
+    appendCopilotMessage(sender, text, align, bg, color) {
+        const historyEl = document.getElementById('copilot-chat-history');
+        if (!historyEl) return;
+        const div = document.createElement('div');
+        div.style.alignSelf = align;
+        div.style.background = bg;
+        div.style.color = color;
+        div.style.padding = '10px 15px';
+        div.style.borderRadius = '12px';
+        div.style.maxWidth = '85%';
+        div.style.lineHeight = '1.4';
+        
+        let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        div.innerHTML = `<strong>${sender}:</strong> <br/>${formattedText}`;
+        
+        historyEl.appendChild(div);
+        historyEl.scrollTop = historyEl.scrollHeight;
+    },
+
+    // --- Playbooks Logic ---
+    loadPlaybook(type) {
+        const area = document.getElementById('playbook-content-area');
+        const title = document.getElementById('playbook-title');
+        const list = document.getElementById('playbook-checklist');
+        
+        area.classList.remove('hidden');
+        list.innerHTML = '';
+        
+        const playbooks = {
+            'water': {
+                title: 'Water Loss Procedures',
+                checks: [
+                    'Ensure safety and mitigate further damage (Stop Source).',
+                    'Identify source of water and exact time of loss.',
+                    'Classify Category (1, 2, or 3).',
+                    'Document age of home. Pre-1980 mandates Asbestos/Lead check before tear out.',
+                    'Did you bag an ITEL sample for flooring or siding if unsalvageable?',
+                    'Take overview photos of the room before tearing out.',
+                    'For each room: Detail what was removed, why, and dimensions.',
+                    'Confirm drying equipment logs (Dehus, Fans) and days running.'
+                ]
+            },
+            'wind': {
+                title: 'Wind & Hail Procedures',
+                checks: [
+                    'Determine Date of Loss via weather history.',
+                    'Inspect all elevations for collateral damage (Spatter, Dents).',
+                    'Complete a standard 10x10 Test Square on all slopes.',
+                    'Identify shingle type, layers, and age.',
+                    'Document underlayment type and local code upgrades required.',
+                    'Check for discontinued siding / ITEL requirement.',
+                    'Photograph roof pitch, drip edge, and valley metal.'
+                ]
+            },
+            'fire': {
+                title: 'Fire & Smoke Procedures',
+                checks: [
+                    'Official Cause & Origin report obtained or requested?',
+                    'Assess structural safety before entering.',
+                    'Scope for smoke web vs soot vs direct charring.',
+                    'HVAC system flagged for cleaning & duct inspection?',
+                    'Inventory total loss personal property separately.',
+                    'Check electrical wiring impacts.',
+                    'Address ozone treatments, encapsulation, or sealing needs.'
+                ]
+            }
+        };
+
+        const data = playbooks[type];
+        if (!data) return;
+
+        title.textContent = data.title;
+        data.checks.forEach(check => {
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.gap = '10px';
+            div.style.alignItems = 'flex-start';
+            div.innerHTML = `<input type="checkbox" style="margin-top:4px;"> <span>${check}</span>`;
+            list.appendChild(div);
         });
     }
 };
