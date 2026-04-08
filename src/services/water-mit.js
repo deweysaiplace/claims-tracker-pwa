@@ -3,7 +3,7 @@
  * Core Engine & Voice Wizard
  */
 
-const waterMit = {
+export const waterMit = {
     rooms: [],
     claimId: '',
     wizardActive: false,

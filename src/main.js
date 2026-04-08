@@ -1,6 +1,6 @@
 /**
  * THE CLAIMS EXPERIENCE - v2.0.0 (Agent Suite)
- * Main Orchestrator
+ * Main Orchestrator & Global Bridge
  */
 
 import './styles/main.css';
@@ -8,7 +8,12 @@ import { store } from './state/Store';
 import { aiService } from './services/AiService';
 import { supabaseService } from './services/SupabaseService';
 
-// Agents
+// Legacy UI Bridge
+import { app } from './services/app';
+import { waterMit } from './services/water-mit';
+import { voiceModule } from './services/voice';
+
+// Modular Agents
 import { estimateAgent } from './agents/EstimateAgent';
 import { waterMitigationAgent } from './agents/WaterMitigationAgent';
 import { taskAgent } from './agents/TaskAgent';
@@ -24,17 +29,15 @@ window.addEventListener('DOMContentLoaded', async () => {
         // 1. Initial State & Settings
         store.loadSettings();
 
-        // 2. Data Persistence Layer
-        supabaseService.init(
-            import.meta.env.VITE_SUPABASE_URL, 
-            import.meta.env.VITE_SUPABASE_ANON_KEY
-        );
+        // 2. Global Bridge (Crucial for Legacy HTML Compatibility)
+        // These ensure all 'onclick="app.someFunction()"' handlers work
+        window.app = app;
+        window.waterMit = waterMit;
+        window.voiceModule = voiceModule;
+        window.db = supabaseService;
+        window.aiBrain = aiService;
+        window.waterLossAgent = waterMitigationAgent;
 
-        // 3. Agent Initialization
-        await xactimateAgent.init(); // Load dictionary
-
-        // 4. Global Bridge (Legacy Compatibility)
-        // This allows existing HTML event handlers to talk to the new Agent Suite
         window.agents = {
             estimate: estimateAgent,
             waterMit: waterMitigationAgent,
@@ -44,12 +47,21 @@ window.addEventListener('DOMContentLoaded', async () => {
             playback: playbackAgent
         };
 
-        // Bridge legacy global objects to the agents
-        window.waterLossAgent = waterMitigationAgent;
-        window.aiBrain = aiService;
-        window.db = supabaseService;
+        // 3. Data Persistence Layer
+        supabaseService.init(
+            import.meta.env.VITE_SUPABASE_URL, 
+            import.meta.env.VITE_SUPABASE_ANON_KEY
+        );
 
-        console.log("✅ The Claims Experience: Ecosystem Stable.");
+        // 4. UI & Logic Bootstrap
+        app.init();
+        waterMit.init();
+        voiceModule.init();
+
+        // 5. Agent Optimization
+        await xactimateAgent.init(); // Load dictionary
+
+        console.log("✅ The Claims Experience: Ecosystem Stable and Legacy Bridged.");
     } catch (error) {
         console.error("❌ Critical System Failure:", error);
     }

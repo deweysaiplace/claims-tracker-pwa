@@ -1,4 +1,4 @@
-window.voiceModule = {
+export const voiceModule = {
     recognition: null,
     isRecording: false,
     finalTranscript: '',
@@ -223,6 +223,4 @@ window.voiceModule = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    voiceModule.init();
-});
+// Managed by main.js orchestration

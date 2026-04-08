@@ -1,4 +1,4 @@
-const app = {
+export const app = {
     currentView: 'home',
     currentDesk: 'field',
     currentClaimId: null,
@@ -2908,7 +2908,4 @@ waterMit.stopWizard = function() {
     if(window.voiceModule) window.voiceModule.stopRecording();
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    app.init();
-    waterMit.init();
-});
+// Removed redundant listener for Vite orchestration
