@@ -8,6 +8,7 @@ const app = {
     scannedImagesCount: 0,
     loadedPolicies: [],
     xactimateCodes: [], // The entire local db
+    apiKey: 'xai-1dZkQTImZSpmm6clOdE6VIlhXuDwjpXmVjQsPPMPSrK9IJdu0Tb5mwxTJWo4cykYSZH8jd68WPdjulzk',
     settings: {
         darkMode: true,
         stealthMode: false,
@@ -289,7 +290,9 @@ const app = {
         if (viewId === 'settings') {
             const apiKeyInput = document.getElementById('setting-api-key');
             if (apiKeyInput) {
-                apiKeyInput.value = localStorage.getItem('GROK_API_KEY') || '';
+                const stored = localStorage.getItem('GROK_API_KEY');
+                apiKeyInput.value = stored || '--- Hardcoded System Key Active ---';
+                if (!stored) apiKeyInput.style.opacity = '0.5';
             }
             this.generateAppQRCode();
         }
@@ -2067,7 +2070,7 @@ const app = {
     },
 
     async processCtre() {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;
         if (!apiKey) return alert("Please configure Grok API Key in Settings.");
 
         const mode = document.querySelector('input[name="ctre-mode"]:checked').value;
@@ -2156,7 +2159,7 @@ const app = {
         const text = inputEl.value.trim();
         if(!text) return;
 
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;
         if (!apiKey) return alert("Please configure Grok API Key in Settings.");
 
         inputEl.value = '';

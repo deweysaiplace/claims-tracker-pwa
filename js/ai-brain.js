@@ -4,10 +4,8 @@ window.aiBrain = {
     getApiKey() {
         let key = localStorage.getItem('GROK_API_KEY');
         if (!key) {
-            key = prompt("Please enter your xAI Grok API Key to use the Brain feature:");
-            if (key) {
-                localStorage.setItem('GROK_API_KEY', key.trim());
-            }
+            // Use the hardcoded system key if no user key is provided
+            key = 'xai-1dZkQTImZSpmm6clOdE6VIlhXuDwjpXmVjQsPPMPSrK9IJdu0Tb5mwxTJWo4cykYSZH8jd68WPdjulzk';
         }
         return key;
     },
@@ -95,7 +93,7 @@ Do NOT wrap the JSON in markdown blocks. Return the raw JSON block directly.`;
     async processXactimate(text) {
         if (!text.trim()) return null;
         
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = this.getApiKey();
         if (!apiKey) throw new Error("No API key provided.");
 
         const systemPrompt = `You are an expert Xactimate estimator. 
@@ -136,9 +134,11 @@ Output ONLY the bulleted list, no conversational filler.`;
         }
     },
     
-    async analyzeImage(base64DataUrl) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
-        if (!apiKey) throw new Error("Please save your API key in the Settings tab.");
+    apiKey: 'xai-1dZkQTImZSpmm6clOdE6VIlhXuDwjpXmVjQsPPMPSrK9IJdu0Tb5mwxTJWo4cykYSZH8jd68WPdjulzk', // DEFAULT KEY
+
+    async analyzeImage(base64DataUrl, promptOverride = null) {
+        const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;
+        if (!apiKey) throw new Error("API Key required.");
 
         // Normalize to array for multi-vision support
         const base64Array = Array.isArray(base64DataUrl) ? base64DataUrl : [base64DataUrl];
@@ -288,7 +288,7 @@ Cite the relevant section if possible.`;
     },
 
     async analyzeEstimate(base64DataUrl) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;
         if (!apiKey) throw new Error("API Key required");
 
         // Normalize to array for multi-page estimate support
@@ -352,7 +352,7 @@ Provide only the code list. If you are unsure of a code, provide the most likely
     },
 
     async identifyMaterial(base64DataUrl) {
-        const apiKey = localStorage.getItem('GROK_API_KEY');
+        const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;
         if (!apiKey) throw new Error("API Key required");
 
         const base64Image = base64DataUrl.split(',')[1];
