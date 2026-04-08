@@ -27,6 +27,7 @@ const app = {
 
         this.setupOfflineDetection();
         this.makeFabDraggable();
+        this.setupRealtimeSync();
     },
 
     async loadXactimateCodes() {
@@ -123,10 +124,13 @@ const app = {
     setupOfflineDetection() {
         const updateOnlineStatus = () => {
             const banner = document.getElementById('offline-banner');
+            const dot = document.getElementById('sync-status-dot');
             if (navigator.onLine) {
                 if (banner) banner.classList.add('hidden');
+                if (dot) dot.style.background = '#4caf50'; // Green
             } else {
                 if (banner) banner.classList.remove('hidden');
+                if (dot) dot.style.background = '#f44336'; // Red
             }
         };
 
@@ -162,13 +166,46 @@ const app = {
     setupErrorHandlers() {
         window.onerror = (message, source, lineno, colno, error) => {
             const userId = auth.currentUser ? auth.currentUser.id : null;
-            db.logError(userId, message, error ? error.stack : `At ${source}:${lineno}`, this.currentView, "v1.8.0");
+            db.logError(userId, message, error ? error.stack : `At ${source}:${lineno}`, this.currentView, "v1.8.5");
         };
 
         window.onunhandledrejection = (event) => {
             const userId = auth.currentUser ? auth.currentUser.id : null;
-            db.logError(userId, "Unhandled Promise Rejection: " + event.reason, null, this.currentView, "v1.8.0");
+            db.logError(userId, "Unhandled Promise Rejection: " + event.reason, null, this.currentView, "v1.8.5");
         };
+    },
+
+    setupRealtimeSync() {
+        if (!window.supabaseClient || !auth.currentUser) return;
+
+        console.log("Initializing Realtime Sync Hub...");
+        
+        // Listen for changes on critical tables
+        const channel = window.supabaseClient.channel('db-changes')
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'tasks',
+                filter: `user_id=eq.${auth.currentUser.id}`
+            }, (payload) => {
+                console.log('Realtime Task Update:', payload);
+                this.loadData(); // Refresh UI
+            })
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'claims',
+                filter: `user_id=eq.${auth.currentUser.id}`
+            }, () => this.loadData())
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'draft_estimates',
+                filter: `user_id=eq.${auth.currentUser.id}`
+            }, () => this.loadData())
+            .subscribe();
+            
+        this.realtimeChannel = channel;
     },
 
     bindEvents() {
@@ -1807,7 +1844,7 @@ const app = {
             };
 
             // Log as a special error type for now
-            const res = await db.logError(userId, "USER_FEEDBACK: " + description, JSON.stringify(context), this.currentView, "v1.8.0");
+            const res = await db.logError(userId, "USER_FEEDBACK: " + description, JSON.stringify(context), this.currentView, "v1.8.5");
             console.log("Bug Report Response:", res);
 
             this.showToast("Thank you! Feedback sent.", "success");
@@ -1949,11 +1986,11 @@ const app = {
         document.getElementById('ctre-output-container').classList.add('hidden');
     },
 
-    ctreData: { ctre: null, sfe: null },
+    ctreData: { ctre: [], sfe: [] },
 
     async handleCtreUpload(event, type) {
-        const file = event.target.files[0];
-        if (!file) return;
+        const files = Array.from(event.target.files);
+        if (files.length === 0) return;
         
         const previewContainer = document.getElementById('ctre-preview-container');
         const processBtn = document.getElementById('btn-process-ctre');
@@ -1961,31 +1998,34 @@ const app = {
         previewContainer.classList.remove('hidden');
         processBtn.classList.add('hidden');
 
+        // Reset for new upload batch if desired, or append? 
+        // User asked to "upload multiple photos", usually implies a single batch selection.
+        // Let's clear and set to the new selection to avoid accidental bloat.
+        this.ctreData[type] = [];
+
         try {
-            if (file.type === 'application/pdf') {
-                if(typeof pdfjsLib === 'undefined') throw new Error("PDF.js not loaded.");
-                const fileReader = new FileReader();
-                fileReader.onload = async function() {
-                    const typedarray = new Uint8Array(this.result);
-                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+            for (const file of files) {
+                if (file.type === 'application/pdf') {
+                    if(typeof pdfjsLib === 'undefined') throw new Error("PDF.js not loaded.");
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
                     let fullText = "";
                     for(let i = 1; i <= pdf.numPages; i++){
                         const page = await pdf.getPage(i);
                         const textContent = await page.getTextContent();
                         fullText += textContent.items.map(s => s.str).join(' ') + "\n";
                     }
-                    app.ctreData[type] = { type: 'text', content: fullText };
-                    app.checkCtreReady(type, processBtn);
-                };
-                fileReader.readAsArrayBuffer(file);
-            } else {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    this.ctreData[type] = { type: 'image', content: reader.result };
-                    this.checkCtreReady(type, processBtn);
-                };
-                reader.readAsDataURL(file);
+                    this.ctreData[type].push({ type: 'text', content: fullText });
+                } else {
+                    const base64 = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.readAsDataURL(file);
+                    });
+                    this.ctreData[type].push({ type: 'image', content: base64 });
+                }
             }
+            this.checkCtreReady(type, processBtn);
         } catch (e) {
             console.error("Upload error", e);
             alert("Error loading file. Please try again.");
@@ -1993,13 +2033,20 @@ const app = {
     },
 
     checkCtreReady(type, processBtn) {
+        // Update UI counters
+        const countSpan = document.getElementById(`${type}-photo-count`);
+        if (countSpan) countSpan.textContent = this.ctreData[type].length;
+
         if (type === 'sfe') {
             document.getElementById('sfe-status-text').classList.remove('hidden');
         }
         const mode = document.querySelector('input[name="ctre-mode"]:checked').value;
-        if (mode === 'translate' && this.ctreData.ctre) {
+        const hasCtre = this.ctreData.ctre && this.ctreData.ctre.length > 0;
+        const hasSfe = this.ctreData.sfe && this.ctreData.sfe.length > 0;
+
+        if (mode === 'translate' && hasCtre) {
             processBtn.classList.remove('hidden');
-        } else if (mode === 'compare' && this.ctreData.ctre && this.ctreData.sfe) {
+        } else if (mode === 'compare' && hasCtre && hasSfe) {
             processBtn.classList.remove('hidden');
         }
     },
@@ -2014,11 +2061,14 @@ const app = {
         const transcriptArea = document.getElementById('ctre-transcript');
 
         // Verify Data
-        if (mode === 'translate' && !this.ctreData.ctre) return alert("Upload CTRE first.");
-        if (mode === 'compare' && (!this.ctreData.ctre || !this.ctreData.sfe)) return alert("Upload both CTRE and SFE.");
+        const hasCtre = this.ctreData.ctre && this.ctreData.ctre.length > 0;
+        const hasSfe = this.ctreData.sfe && this.ctreData.sfe.length > 0;
+
+        if (mode === 'translate' && !hasCtre) return alert("Upload CTRE first.");
+        if (mode === 'compare' && (!hasCtre || !hasSfe)) return alert("Upload both CTRE and SFE.");
 
         processBtn.disabled = true;
-        processBtn.textContent = "Processing...";
+        processBtn.textContent = "Processing Multi-Photo Scope...";
         outputContainer.classList.add('hidden');
 
         try {
@@ -2026,29 +2076,33 @@ const app = {
             let contentBlock = [];
 
             if (mode === 'translate') {
-                prompt = "You are an expert Xactimate estimator. Analyze this contractor's estimate (CTRE). Extract each line item and translate it into a valid or best-guess Xactimate category and code. Format your response as a clean, bulleted list: - [CAT] [CODE] [DESCRIPTION]. Provide only the code list.";
+                prompt = "You are an expert Xactimate estimator. Analyze these contractor's estimate photos (CTRE). Extract each line item and translate it into a valid or best-guess Xactimate category and code. Format your response as a clean, bulleted list: - [CAT] [CODE] [DESCRIPTION]. Provide only the code list.";
             } else {
-                prompt = "You are an expert claims adjuster. You are given a Contractor Estimate (CTRE) and a State Farm Estimate (SFE). Compare them. Output EXACTLY what Xactimate codes are missing from the SFE, and any discrepancies in quantities. Format clearly.";
+                prompt = "You are an expert claims adjuster. You are given photos of a Contractor Estimate (CTRE) and potentially a State Farm Estimate (SFE). Compare them. Output EXACTLY what Xactimate codes are missing from the SFE, and any discrepancies in quantities. Format clearly.";
             }
 
             contentBlock.push({ type: "text", text: prompt });
 
-            // Add CTRE
-            if (this.ctreData.ctre.type === 'text') {
-                contentBlock.push({ type: "text", text: "CTRE DATA:\\n" + this.ctreData.ctre.content });
-            } else {
-                const b64 = this.ctreData.ctre.content.split(',')[1] || this.ctreData.ctre.content;
-                contentBlock.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } });
-            }
-
-            // Add SFE
-            if (mode === 'compare' && this.ctreData.sfe) {
-                if (this.ctreData.sfe.type === 'text') {
-                    contentBlock.push({ type: "text", text: "SFE DATA:\\n" + this.ctreData.sfe.content });
+            // Add CTRE items (can be mix of text from PDFs or images)
+            this.ctreData.ctre.forEach(item => {
+                if (item.type === 'text') {
+                    contentBlock.push({ type: "text", text: "CTRE SEGMENT:\\n" + item.content });
                 } else {
-                    const b64s = this.ctreData.sfe.content.split(',')[1] || this.ctreData.sfe.content;
-                    contentBlock.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64s}` } });
+                    const b64 = item.content.includes(',') ? item.content.split(',')[1] : item.content;
+                    contentBlock.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } });
                 }
+            });
+
+            // Add SFE items
+            if (mode === 'compare' && hasSfe) {
+                this.ctreData.sfe.forEach(item => {
+                    if (item.type === 'text') {
+                        contentBlock.push({ type: "text", text: "SFE SEGMENT:\\n" + item.content });
+                    } else {
+                        const b64 = item.content.includes(',') ? item.content.split(',')[1] : item.content;
+                        contentBlock.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } });
+                    }
+                });
             }
 
             const response = await fetch('https://api.x.ai/v1/chat/completions', {

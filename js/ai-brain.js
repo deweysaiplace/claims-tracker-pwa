@@ -140,9 +140,15 @@ Output ONLY the bulleted list, no conversational filler.`;
         const apiKey = localStorage.getItem('GROK_API_KEY');
         if (!apiKey) throw new Error("Please save your API key in the Settings tab.");
 
-        // Clean base64 string
-        const base64Image = base64DataUrl.split(',')[1];
-        if (!base64Image) throw new Error("Invalid image format");
+        // Normalize to array for multi-vision support
+        const base64Array = Array.isArray(base64DataUrl) ? base64DataUrl : [base64DataUrl];
+        
+        // Clean all base64 strings
+        const cleanedImages = base64Array.map(item => {
+            const b64 = item.includes(',') ? item.split(',')[1] : item;
+            if (!b64) throw new Error("Invalid image format");
+            return b64;
+        });
 
         try {
             const response = await fetch(this.apiUrl, {
@@ -162,11 +168,11 @@ Output ONLY the bulleted list, no conversational filler.`;
                                     type: "text",
                                     text: "You are an expert claims adjuster. Analyze these photos. List any visible damage (hail, wind, water, wear and tear) and its severity. Be concise and professional."
                                 },
-                                // Map over base64DataUrls if it's an array
-                                ...(Array.isArray(base64DataUrl) ? base64DataUrl : [base64DataUrl]).map(item => ({
+                                // Map over cleanedImages
+                                ...cleanedImages.map(b64 => ({
                                     type: "image_url",
                                     image_url: {
-                                        url: item.startsWith('data:') ? item : `data:image/jpeg;base64,${item}`
+                                        url: `data:image/jpeg;base64,${b64}`
                                     }
                                 }))
                             ]
@@ -285,7 +291,15 @@ Cite the relevant section if possible.`;
         const apiKey = localStorage.getItem('GROK_API_KEY');
         if (!apiKey) throw new Error("API Key required");
 
-        const base64Image = base64DataUrl.split(',')[1];
+        // Normalize to array for multi-page estimate support
+        const base64Array = Array.isArray(base64DataUrl) ? base64DataUrl : [base64DataUrl];
+        
+        // Clean all base64 strings
+        const cleanedImages = base64Array.map(item => {
+            const b64 = item.includes(',') ? item.split(',')[1] : item;
+            if (!b64) throw new Error("Invalid image format");
+            return b64;
+        });
         
         try {
             const response = await fetch(this.apiUrl, {
@@ -311,12 +325,13 @@ Format your response as a clean, bulleted list:
 Category examples: SFG (shingles), DRY (drywall), WTR (water extraction), PNT (painting), etc.
 Provide only the code list. If you are unsure of a code, provide the most likely industry standard for that material/labor. No conversational filler.`
                                 },
-                                {
+                                // Map over all pages/photos
+                                ...cleanedImages.map(b64 => ({
                                     type: "image_url",
                                     image_url: {
-                                        url: `data:image/jpeg;base64,${base64Image}`
+                                        url: `data:image/jpeg;base64,${b64}`
                                     }
-                                }
+                                }))
                             ]
                         }
                     ],

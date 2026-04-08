@@ -88,7 +88,10 @@
                 <header class="app-header">
                     <div class="header-title" style="display: flex; align-items: baseline; gap: 8px;">
                         <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">The Claims Experience</span>
-                        <span id="current-view-title" style="font-size: 0.8em; opacity: 0.6;">v1.8.0</span>
+                        <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75rem; opacity: 0.8;">
+                            <span id="sync-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #4caf50; display: inline-block;"></span>
+                            <span id="current-view-title">v1.8.5</span>
+                        </div>
                     </div>
                     <div class="header-actions">
                         <button id="btn-logout" class="icon-btn" aria-label="Logout" onclick="window.supabaseClient.auth.signOut()">
@@ -482,7 +485,7 @@
                         </div>
                         
                          <div style="margin-top: 30px; text-align: center; color: var(--text-secondary); font-size: 0.75rem;">
-                             App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.8.0 (Feedback Loop)</span><br>
+                             App Version: <span style="color: var(--primary-color); font-weight: bold;">v1.8.5 (Feedback Loop)</span><br>
                              Engine: Grok-4.20 Field Expert
                          </div>
                     </div>
@@ -562,19 +565,19 @@
                                 <button class="wl-action-btn" onclick="document.getElementById('ctre-file-input').click()">
                                     <span class="material-symbols-outlined">document_scanner</span>
                                     <span style="font-weight:600; font-size:0.9rem;">Upload CTRE</span>
-                                    <input type="file" id="ctre-file-input" accept="image/*,application/pdf" style="display: none;" onchange="app.handleCtreUpload(event, 'ctre')">
+                                    <input type="file" id="ctre-file-input" accept="image/*,application/pdf" multiple style="display: none;" onchange="app.handleCtreUpload(event, 'ctre')">
                                 </button>
                                 
                                 <button class="wl-action-btn hidden" id="sfe-upload-btn" onclick="document.getElementById('sfe-file-input').click()">
                                     <span class="material-symbols-outlined">add_photo_alternate</span>
                                     <span style="font-weight:600; font-size:0.9rem;">Upload SFE</span>
-                                    <input type="file" id="sfe-file-input" accept="image/*,application/pdf" style="display: none;" onchange="app.handleCtreUpload(event, 'sfe')">
+                                    <input type="file" id="sfe-file-input" accept="image/*,application/pdf" multiple style="display: none;" onchange="app.handleCtreUpload(event, 'sfe')">
                                 </button>
                             </div>
                             
                             <div id="ctre-preview-container" class="hidden" style="margin-top: 15px; text-align:left;">
-                                <p id="ctre-status-text" style="font-size: 0.85rem; color: var(--success-color);"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> CTRE Loaded</p>
-                                <p id="sfe-status-text" class="hidden" style="font-size: 0.85rem; color: var(--success-color); margin-top: 5px;"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> SFE Loaded</p>
+                                <p id="ctre-status-text" style="font-size: 0.85rem; color: var(--success-color);"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> CTRE Loaded: <span id="ctre-photo-count">0</span> pages</p>
+                                <p id="sfe-status-text" class="hidden" style="font-size: 0.85rem; color: var(--success-color); margin-top: 5px;"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">check_circle</span> SFE Loaded: <span id="sfe-photo-count">0</span> pages</p>
                                 
                                 <button id="btn-process-ctre" class="btn btn-primary btn-block btn-large pulse hidden" style="margin-top: 15px;" onclick="app.processCtre()">
                                     Generate Xactimate Codes
@@ -1120,7 +1123,7 @@
     </div>
 
     <!-- Hidden Version Track -->
-    <div id="app-version" style="display:none">v1.8.0</div>
+    <div id="app-version" style="display:none">v1.8.5</div>
     
     <!-- Scripts -->
     <script src="js/supabase-client.js?v=20"></script>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claims-tracker-v1.8.0';
+const CACHE_NAME = 'claims-tracker-v1.8.5';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,8 @@ const ASSETS = [
   './js/supabase-client.js',
   './js/auth.js',
   './js/voice.js',
+  './js/water-loss-agent.js',
+  './js/xactimate_codes.json',
   './manifest.json',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap',
   'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200'
