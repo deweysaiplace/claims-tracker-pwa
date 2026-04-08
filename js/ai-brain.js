@@ -322,11 +322,12 @@ Cite the relevant section if possible.`;
                                     text: `You are an expert Xactimate estimator. Analyze this contractor's photo/capture of an estimate.
 Extract each line item and translate it into a valid or best-guess Xactimate category and code.
 
-Format your response as a clean, bulleted list:
-- [CAT] [CODE] [DESCRIPTION]
+Return your response as a raw JSON array of objects:
+[
+  { "cat": "...", "code": "...", "desc": "...", "qty": "...", "unit": "..." }
+]
 
-Category examples: SFG (shingles), DRY (drywall), WTR (water extraction), PNT (painting), etc.
-Provide only the code list. If you are unsure of a code, provide the most likely industry standard for that material/labor. No conversational filler.`
+Do not include conversational filler or markdown blocks.`
                                 },
                                 // Map over all pages/photos
                                 ...cleanedImages.map(b64 => ({
@@ -338,7 +339,7 @@ Provide only the code list. If you are unsure of a code, provide the most likely
                             ]
                         }
                     ],
-                    temperature: 0.2
+                    temperature: 0.1
                 })
             });
 
@@ -347,7 +348,13 @@ Provide only the code list. If you are unsure of a code, provide the most likely
                 throw new Error(`Grok Estimate Analysis Error (Status ${response.status}): ${errText}`);
             }
             const data = await response.json();
-            return data.choices[0].message.content.trim();
+            let content = data.choices[0].message.content.trim();
+            
+            // Cleanup JSON if needed
+            if (content.startsWith('```json')) content = content.replace(/^```json\n/, '').replace(/\n```$/, '');
+            else if (content.startsWith('```')) content = content.replace(/^```\n/, '').replace(/\n```$/, '');
+            
+            return JSON.parse(content);
         } catch (error) {
             console.error("Estimate Analysis Error:", error);
             throw error;

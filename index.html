@@ -595,13 +595,13 @@
                                 </button>
                             </div>
                             
-                            <div id="ctre-output-container" class="hidden wl-output-container" style="text-align: left;">
+                            <div id="ctre-results-area" class="hidden wl-output-container" style="text-align: left;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                    <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary-color);">AI Output</h3>
-                                    <button class="btn btn-secondary btn-small" onclick="window.navigator.clipboard.writeText(document.getElementById('ctre-transcript').value); alert('Copied!');">Copy</button>
+                                    <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary-color);">Review & Verify Items</h3>
+                                    <span class="status-indicator status-verified" title="Exact match found in dictionary"></span>
                                 </div>
-                                <div class="transcript-box large" style="margin:0;">
-                                    <textarea id="ctre-transcript" readonly style="height: 350px;"></textarea>
+                                <div id="ctre-results-text" style="margin:0;">
+                                    <!-- Table will be injected here by app.renderCorrelatedResults -->
                                 </div>
                             </div>
                         </div>
@@ -1137,6 +1137,8 @@
     <div id="app-version" style="display:none">v1.8.5</div>
     
     <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <script src="js/supabase-client.js?v=20"></script>
     <script src="js/auth.js?v=20"></script>
     <script src="js/voice.js?v=20"></script>

@@ -2098,83 +2098,46 @@ const app = {
     },
 
     async processCtre() {
-        const apiKey = localStorage.getItem('GROK_API_KEY') || this.apiKey;
-        if (!apiKey) return alert("Please configure Grok API Key in Settings.");
-
-        const mode = document.querySelector('input[name="ctre-mode"]:checked').value;
-        const processBtn = document.getElementById('btn-process-ctre');
-        const outputContainer = document.getElementById('ctre-output-container');
-        const transcriptArea = document.getElementById('ctre-transcript');
-
-        // Verify Data
-        const hasCtre = this.ctreData.ctre && this.ctreData.ctre.length > 0;
-        const hasSfe = this.ctreData.sfe && this.ctreData.sfe.length > 0;
-
-        if (mode === 'translate' && !hasCtre) return alert("Upload CTRE first.");
-        if (mode === 'compare' && (!hasCtre || !hasSfe)) return alert("Upload both CTRE and SFE.");
-
-        processBtn.disabled = true;
-        processBtn.textContent = "Processing Multi-Photo Scope...";
-        outputContainer.classList.add('hidden');
-
+        const btn = document.getElementById('btn-process-ctre');
+        const resultsArea = document.getElementById('ctre-results-area');
+        
+        if (this.currentVisionBase64.length === 0) return alert("Upload at least one estimate photo first.");
+        
+        const originalText = btn.innerHTML;
         try {
-            let prompt = "";
-            let contentBlock = [];
-
-            if (mode === 'translate') {
-                prompt = "You are an expert Xactimate estimator. Analyze these contractor's estimate photos (CTRE). Extract each line item and translate it into a valid or best-guess Xactimate category and code. Format your response as a clean, bulleted list: - [CAT] [CODE] [DESCRIPTION]. Provide only the code list.";
-            } else {
-                prompt = "You are an expert claims adjuster. You are given photos of a Contractor Estimate (CTRE) and potentially a State Farm Estimate (SFE). Compare them. Output EXACTLY what Xactimate codes are missing from the SFE, and any discrepancies in quantities. Format clearly.";
-            }
-
-            contentBlock.push({ type: "text", text: prompt });
-
-            // Add CTRE items (can be mix of text from PDFs or images)
-            this.ctreData.ctre.forEach(item => {
-                if (item.type === 'text') {
-                    contentBlock.push({ type: "text", text: "CTRE SEGMENT:\\n" + item.content });
-                } else {
-                    const b64 = item.content.includes(',') ? item.content.split(',')[1] : item.content;
-                    contentBlock.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } });
-                }
-            });
-
-            // Add SFE items
-            if (mode === 'compare' && hasSfe) {
-                this.ctreData.sfe.forEach(item => {
-                    if (item.type === 'text') {
-                        contentBlock.push({ type: "text", text: "SFE SEGMENT:\\n" + item.content });
-                    } else {
-                        const b64 = item.content.includes(',') ? item.content.split(',')[1] : item.content;
-                        contentBlock.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } });
-                    }
-                });
-            }
-
-            const response = await fetch('https://api.x.ai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: 'grok-4.20-reasoning',
-                    messages: [{ role: 'user', content: contentBlock }],
-                    temperature: 0.1
-                })
-            });
-
-            if(!response.ok) throw new Error("Grok translation failed.");
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Analyzing & Correlating...';
             
-            const data = await response.json();
-            transcriptArea.value = data.choices[0].message.content.trim();
-            outputContainer.classList.remove('hidden');
-
-            this.showToast("Analysis Complete");
+            // 1. AI Analysis (returns JSON)
+            const aiItems = await aiBrain.analyzeEstimate(this.currentVisionBase64);
+            
+            // 2. Local Correlation
+            const correlatedItems = this.correlateEstimates(aiItems);
+            
+            // 3. Render Interactive View
+            this.renderCorrelatedResults(correlatedItems);
+            
+            resultsArea.classList.remove('hidden');
+            this.showToast("Analysis Complete! Review and verify items.", "success");
+            
         } catch (e) {
             console.error(e);
-            alert("Error processing estimate. Please check console.");
+            alert("Error analyzing estimate: " + e.message);
         } finally {
-            processBtn.disabled = false;
-            processBtn.textContent = "Generate Xactimate Codes";
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
+    },
+
+    clearCtre() {
+        this.currentVisionBase64 = [];
+        const resultsArea = document.getElementById('ctre-results-area');
+        if (resultsArea) resultsArea.classList.add('hidden');
+        
+        const grid = document.getElementById('ctre-preview-grid');
+        if (grid) grid.innerHTML = '';
+        
+        this.showToast("CTRE Cleared.");
     },
 
     // --- Copilot Chat Logic ---
@@ -2329,6 +2292,112 @@ const app = {
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;
+        }
+    },
+
+    correlateEstimates(aiItems) {
+        if (!this.xactimateCodes || this.xactimateCodes.length === 0) return aiItems;
+
+        // Initialize Fuse for fuzzy search
+        const fuse = new Fuse(this.xactimateCodes, {
+            keys: ['code', 'description'],
+            threshold: 0.4
+        });
+
+        return aiItems.map(item => {
+            const codeQuery = (item.code || '').trim();
+            const descQuery = (item.desc || '').trim();
+            
+            // 1. Precise Match
+            const exactMatch = this.xactimateCodes.find(c => c.code.toLowerCase() === codeQuery.toLowerCase());
+            if (exactMatch) return { ...item, status: 'verified', match: exactMatch };
+            
+            // 2. Fuzzy Match
+            const results = fuse.search(codeQuery || descQuery);
+            if (results.length > 0) {
+                return { 
+                    ...item, 
+                    status: 'suggested', 
+                    match: results[0].item, 
+                    alternatives: results.slice(1, 6).map(r => r.item) 
+                };
+            }
+
+            return { ...item, status: 'unknown' };
+        });
+    },
+
+    renderCorrelatedResults(items) {
+        // Find the right container. If we are in CTRE mode, use that results box.
+        const container = document.getElementById('ctre-results-text') || document.getElementById('vision-results-text');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="review-table-wrapper">
+                <table class="review-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Description</th>
+                            <th>Code</th>
+                            <th>Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody id="review-table-body"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="app.syncReviewToDrafts()" style="flex:1;">
+                    <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">sync_alt</span> Sync to Drafts
+                </button>
+                <button class="btn btn-secondary" onclick="app.clearCtre()" style="width: auto;">Clear</button>
+            </div>
+        `;
+
+        const body = document.getElementById('review-table-body');
+        items.forEach((item, index) => {
+            const row = document.createElement('tr');
+            const statusClass = item.status === 'verified' ? 'status-verified' : (item.status === 'suggested' ? 'status-suggested' : 'status-unknown');
+            const codeVal = item.match ? item.match.code : (item.code || '???');
+            
+            row.innerHTML = `
+                <td><span class="status-indicator ${statusClass}" title="${item.status}"></span></td>
+                <td><input type="text" class="table-input" value="${item.desc}" onchange="app.updateReviewItem(${index}, 'desc', this.value)"></td>
+                <td>
+                    <div class="code-select-wrapper">
+                        <input type="text" class="table-input" value="${codeVal}" style="font-family:monospace;font-weight:bold;color:var(--primary-color);" onchange="app.updateReviewItem(${index}, 'code', this.value)">
+                    </div>
+                </td>
+                <td style="width:50px;"><input type="text" class="table-input" value="${item.qty || '1'}" onchange="app.updateReviewItem(${index}, 'qty', this.value)"></td>
+            `;
+            body.appendChild(row);
+        });
+
+        this.currentReviewItems = items;
+    },
+
+    updateReviewItem(index, field, value) {
+        if (!this.currentReviewItems[index]) return;
+        this.currentReviewItems[index][field] = value;
+    },
+
+    async syncReviewToDrafts() {
+        if (!this.currentReviewItems || this.currentReviewItems.length === 0) return;
+        
+        const title = prompt("Name this draft estimate:", "Translated Scope - " + new Date().toLocaleDateString());
+        if (!title) return;
+
+        try {
+            const formattedCodes = this.currentReviewItems.map(it => {
+                const code = it.code || (it.match ? it.match.code : 'UNKNOWN');
+                return `${it.cat || 'GEN'} ${code} - ${it.desc} [Qty: ${it.qty || 1}]`;
+            });
+            await db.saveDraftEstimate(auth.currentUser.id, title, formattedCodes);
+            this.showToast("Synced to Draft Estimates!", "success");
+            this.navigate('drafts');
+        } catch (e) {
+            console.error(e);
+            alert("Sync failed: " + e.message);
         }
     }
 };
