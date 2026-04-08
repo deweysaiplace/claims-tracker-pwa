@@ -88,7 +88,7 @@
                 <header class="app-header">
                     <div class="header-title" style="display: flex; align-items: baseline; gap: 8px;">
                         <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--primary-color);">Claims Tracker</span>
-                        <span id="current-view-title" style="font-size: 0.8em; opacity: 0.6;">v1.7.9</span>
+                        <span id="current-view-title" style="font-size: 0.8em; opacity: 0.6;">v1.8.0</span>
                     </div>
                     <div class="header-actions">
                         <button id="btn-logout" class="icon-btn" aria-label="Logout" onclick="window.supabaseClient.auth.signOut()">
@@ -154,6 +154,14 @@
                             </div>
                             <h3>Material ID</h3>
                             <p>Siding & Soffit</p>
+                        </button>
+
+                        <button class="action-card" onclick="app.navigate('drafts')" style="grid-column: span 1;">
+                            <div class="action-icon drafts-icon" style="background: #20c997; color: white;">
+                                <span class="material-symbols-outlined">folder_open</span>
+                            </div>
+                            <h3>Estimate Drafts</h3>
+                            <p>Stored Codes</p>
                         </button>
 
 
@@ -505,7 +513,10 @@
                             <div id="estimate-output-container" class="hidden" style="margin-top: 25px; text-align: left;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <h3 style="margin: 0; font-size: 1rem;">Generated Xactimate Codes</h3>
-                                    <button class="btn btn-secondary btn-small" onclick="app.copyEstimateToClipboard()" style="padding: 4px 8px; font-size: 0.75rem;">Copy All</button>
+                                    <div style="display:flex; gap:5px;">
+                                        <button class="btn btn-secondary btn-small" onclick="app.copyEstimateToClipboard()" style="padding: 4px 8px; font-size: 0.75rem;">Copy</button>
+                                        <button class="btn btn-success btn-small" onclick="app.openSaveDraftModal('estimate')" style="padding: 4px 8px; font-size: 0.75rem;">Save Draft</button>
+                                    </div>
                                 </div>
                                 <div class="transcript-box">
                                     <textarea id="estimate-transcript" readonly style="height: 250px; font-family: monospace; font-size: 0.85rem; line-height: 1.4;"></textarea>
@@ -707,6 +718,23 @@
                         </div>
                     </div>
                 </section>
+                <!-- Drafts View -->
+                <section id="view-drafts" class="view">
+                    <div class="view-content">
+                        <h2>Estimate Drafts</h2>
+                        <p class="subtitle">Stored Xactimate extractions</p>
+                        
+                        <div id="drafts-loading" class="hidden" style="text-align: center; padding: 20px;">
+                            <span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span>
+                            <p>Fetching drafts...</p>
+                        </div>
+
+                        <ul id="drafts-list" class="task-list" style="margin-top: 20px;">
+                            <!-- Drafts injected here -->
+                            <li class="empty-state">No drafts saved yet.</li>
+                        </ul>
+                    </div>
+                </section>
             </div><!-- End Main Content -->
         </div><!-- End App Layout -->
 
@@ -874,8 +902,33 @@
     <!-- Toast Notifications -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- Modal: Save Draft -->
+    <div id="modal-save-draft" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Save Estimate Draft</h3>
+                <button class="icon-btn close-modal"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label>Draft Title / Claim Info</label>
+                    <input type="text" id="draft-title-input" placeholder="e.g. John Doe - Roof Ext">
+                </div>
+                <div class="input-group">
+                    <label>Associate with Claim (Optional)</label>
+                    <select id="draft-claim-id">
+                        <option value="">-- No Specific Claim --</option>
+                    </select>
+                </div>
+                <!-- Hidden storage for the codes while modal is open -->
+                <input type="hidden" id="draft-codes-hidden">
+                <button class="btn btn-primary btn-block" onclick="app.saveDraftEstimate()">Save Draft</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Hidden Version Track -->
-    <div id="app-version" style="display:none">v1.7.9</div>
+    <div id="app-version" style="display:none">v1.8.0</div>
     
     <!-- Scripts -->
     <script src="js/supabase-client.js?v=20"></script>
