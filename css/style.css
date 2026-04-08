@@ -914,3 +914,31 @@ body {
 .status-verified { background-color: #28a745; box-shadow: 0 0 5px #28a745; }
 .status-suggested { background-color: #ffc107; box-shadow: 0 0 5px #ffc107; }
 .status-unknown { background-color: #dc3545; box-shadow: 0 0 5px #dc3545; }
+
+/* Field Hub Accents */
+.field-hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+#code-chat-history {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 8px;
+    min-height: 200px;
+}
+
+.jurisdiction-badge {
+    background: var(--success-color);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}

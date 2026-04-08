@@ -2399,6 +2399,99 @@ const app = {
             console.error(e);
             alert("Sync failed: " + e.message);
         }
+    },
+
+    // --- Field Hub (OneClick-Lite) Logic ---
+    
+    async lookupZipIntelligence(zip) {
+        if (!zip || zip.length < 5) return;
+        
+        const card = document.getElementById('hub-jurisdiction-card');
+        const info = document.getElementById('hub-jurisdiction-info');
+        const btn = document.getElementById('btn-refresh-hub');
+        
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 1s linear infinite; font-size:18px;">sync</span>';
+            this.currentZip = zip;
+            
+            const results = await aiBrain.getZipIntelligence(zip);
+            
+            card.classList.remove('hidden');
+            info.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                    <div>🏛️ <strong>Jurisdiction:</strong> ${results.ahj}</div>
+                    <div>💰 <strong>Sales Tax:</strong> ${results.sales_tax}</div>
+                    <div>📜 <strong>Governing Codes:</strong> ${results.governing_codes}</div>
+                    <div style="margin-top:5px; padding-top:5px; border-top: 1px solid rgba(0,0,0,0.1);">
+                        <button class="btn-micro" style="width:100%; text-align:center;" onclick="window.open('${results.dept_url}', '_blank')">
+                            Visit Building Dept Website <span class="material-symbols-outlined" style="font-size:12px;">open_in_new</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            this.showToast("Local intelligence updated for " + zip, "success");
+        } catch (e) {
+            console.error(e);
+            this.showToast("Failed to fetch zip data.", "error");
+        } finally {
+            btn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px;">sync</span>';
+        }
+    },
+
+    openCodeBreaker() {
+        if (!this.currentZip) {
+            alert("Please enter a Zip Code in the Field Hub first.");
+            return;
+        }
+        document.getElementById('modal-code-breaker').classList.remove('hidden');
+    },
+
+    async askCodeConsultant() {
+        const input = document.getElementById('code-query-input');
+        const query = input.value.trim();
+        if (!query) return;
+
+        const history = document.getElementById('code-chat-history');
+        
+        // Add User Message
+        const userMsg = document.createElement('div');
+        userMsg.style.cssText = "background: var(--bg-surface); padding: 12px; border-radius: 8px; font-size: 0.9rem; align-self: flex-end; max-width: 80%; border: 1px solid var(--border-color);";
+        userMsg.textContent = query;
+        history.appendChild(userMsg);
+        
+        input.value = '';
+
+        try {
+            // Add Loading
+            const loading = document.createElement('div');
+            loading.id = 'code-loading';
+            loading.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> Researching Codes...';
+            history.appendChild(loading);
+            history.scrollTop = history.scrollHeight;
+
+            const answer = await aiBrain.askCodeConsultant(query, this.currentZip);
+            
+            loading.remove();
+
+            // Add Assistant Message
+            const assistantMsg = document.createElement('div');
+            assistantMsg.style.cssText = "background: rgba(0,122,255,0.1); padding: 12px; border-radius: 8px; font-size: 0.9rem; border: 1px solid var(--primary-color);";
+            assistantMsg.innerHTML = answer.replace(/\n/g, '<br>');
+            history.appendChild(assistantMsg);
+            
+        } catch (e) {
+            console.error(e);
+            this.showToast("Code Breaker error.", "error");
+        }
+
+        history.scrollTop = history.scrollHeight;
+    },
+
+    openPitchGauge() {
+        this.showToast("Initializing Gyroscope...", "info");
+        // We will implement sensors.js later if needed, for now a placeholder
+        alert("Digital Pitch Gauge: Place phone on roof. Feature building in v1.9.6");
     }
 };
 

@@ -714,5 +714,86 @@ Provide a concise summary in HTML format (using <b> tags for emphasis).`;
             console.error("Dictionary Search Error:", error);
             return [];
         }
+    },
+
+    async getZipIntelligence(zip) {
+        const apiKey = this.getApiKey();
+        if (!apiKey) throw new Error("API Key required");
+
+        const prompt = `You are an expert in insurance claim logistics and jurisdictional mapping. 
+For Zip Code: ${zip}, identify:
+1. The Authority Having Jurisdiction (AHJ) - e.g. City of Atlanta Building Department.
+2. The current Material Sales Tax rate for that location.
+3. The Governing Building Codes currently adopted (e.g. 2021 IRC, 2020 NEC).
+4. A direct URL to the Building Department or Permit Search website.
+
+Return ONLY as a raw JSON object:
+{
+  "ahj": "...",
+  "sales_tax": "X.X%",
+  "governing_codes": "...",
+  "dept_url": "..."
+}`;
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-4.20-reasoning',
+                    messages: [
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.1
+                })
+            });
+            const data = await response.json();
+            let content = data.choices[0].message.content.trim();
+            if (content.startsWith('```json')) content = content.replace(/^```json\n/, '').replace(/\n```$/, '');
+            else if (content.startsWith('```')) content = content.replace(/^```\n/, '').replace(/\n```$/, '');
+            return JSON.parse(content);
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    },
+
+    async askCodeConsultant(query, zip) {
+        const apiKey = this.getApiKey();
+        if (!apiKey) throw new Error("API Key required");
+
+        const prompt = `You are an elite Building Code Consultant specializing in IRC (International Residential Code) and IBC (International Building Code) as it pertains to insurance restoration.
+Location Zip: ${zip}
+
+Answer this building code question accurately. 
+- Always cite the specific Code Section (e.g. R905.2.8.5).
+- If the zip code implies a specific state (e.g. Florida), reference state-specific amendments if applicable.
+- Focus on "Line item justification" arguments (i.e. why this must be paid).
+
+Question: ${query}`;
+
+        try {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'grok-4.20-reasoning',
+                    messages: [
+                        { role: 'user', content: prompt }
+                    ]
+                })
+            });
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
     }
 };
